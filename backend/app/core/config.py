@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # Database
-    database_url: str = "sqlite:///./voxscholar.db"
+    database_url: str = "sqlite+aiosqlite:///./voxscholar.db"
     
     # Supabase (Optional APIs and DB Configuration)
     supabase_url: str = ""
@@ -36,7 +36,11 @@ class Settings(BaseSettings):
     
     # Groq API
     groq_api_key: str = ""
-    groq_model: str = "llama3-70b-8192"
+    groq_model: str = "llama-3.3-70b-versatile"
+    
+    # Ollama (Local)
+    ollama_base_url: str = "http://localhost:11434/v1"
+    ollama_model: str = "deepseek-r1"
     
     # PDF.co 
     pdf_co_api_key: str = ""
@@ -45,6 +49,11 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = ""
     voice_id_male: str = "21m00Tcm4TlvDq8ikWAM"
     voice_id_female: str = "2EiwWnGeFN0m4CMYp7k9"
+    
+    # Cloudinary (Optional for cloud storage)
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
     
     # CORS — stored as a string, split on commas
     cors_origins: Union[List[str], str] = ["http://localhost:5173", "http://127.0.0.1:5173"]

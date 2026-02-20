@@ -56,39 +56,43 @@ class ElevenLabsService:
         audio_segments = []
         total_duration = 0.0
         
-        for entry in script:
+        for i, entry in enumerate(script):
             speaker = entry.get("speaker", "A")
             text = entry.get("text", "")
-            name = entry.get("speaker_name", "Speaker")
+            name = entry.get("name", "Speaker")
             
-            # Skip recap entries (they'll be handled differently)
-            if entry.get("is_recap", False):
+            if not text or not text.strip():
                 continue
             
             # Select voice based on speaker
             voice_id = voice_male if speaker == "A" else voice_female
             
-            if text:
-                try:
-                    audio = await self.generate_speech(
-                        text=text,
-                        voice_id=voice_id,
-                        speed=speed
-                    )
-                    audio_segments.append(audio)
-                    
-                    # Estimate duration (rough estimate: 150 words per minute at 1x speed)
-                    word_count = len(text.split())
-                    duration = (word_count / 150) / speed
-                    total_duration += duration
-                    
-                    # Small pause between segments
-                    pause_duration = int(0.5 * 44100 * 2)  # 0.5 seconds of silence
-                    audio_segments.append(b'\x00' * pause_duration)
-                    
-                except Exception as e:
-                    print(f"Error generating audio for {name}: {e}")
-                    continue
+            try:
+                print(f"Generating audio for segment {i+1}/{len(script)}: {name}")
+                audio = await self.generate_speech(
+                    text=text,
+                    voice_id=voice_id,
+                    speed=speed
+                )
+                audio_segments.append(audio)
+                
+                # Estimate duration (rough estimate: 150 words per minute at 1x speed)
+                word_count = len(text.split())
+                duration = (word_count / 150) * 60 / speed
+                total_duration += duration
+                
+                # Small pause between segments (0.5 seconds)
+                pause_duration = int(0.5 * 44100 * 2)  # 44.1kHz stereo
+                audio_segments.append(b'\x00' * pause_duration)
+                total_duration += 0.5
+                
+            except Exception as e:
+                print(f"Error generating audio for {name}: {e}")
+                # Continue with other segments
+                continue
+        
+        if not audio_segments:
+            raise Exception("Failed to generate any audio segments")
         
         # Combine all audio segments
         final_audio = b"".join(audio_segments)

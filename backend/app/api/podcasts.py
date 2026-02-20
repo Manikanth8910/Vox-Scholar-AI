@@ -20,7 +20,7 @@ from app.schemas import (
 )
 from app.models.user import User
 from app.models.podcast import PodcastStatus
-from app.services import openai_service, elevenlabs_service
+from app.services import openai_service, elevenlabs_service, storage_service
 
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
@@ -93,26 +93,21 @@ async def generate_podcast(
         if not script:
             raise Exception("Failed to generate podcast script")
         
-        # Generate audio (mock for now - in production would use ElevenLabs)
-        # audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
-        #     script=script,
-        #     voice_male=request.voice_male,
-        #     voice_female=request.voice_female,
-        #     speed=request.speed
-        # )
+        # Generate audio using ElevenLabs
+        audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
+            script=script,
+            voice_male=request.voice_male,
+            voice_female=request.voice_female,
+            speed=request.speed
+        )
         
-        # Mock audio generation
-        audio_bytes = b"MOCK_AUDIO_DATA"  # Placeholder
-        duration = len(script) * 30  # Rough estimate
-        
-        # Save audio file
+        # Upload audio to storage (Cloudinary or local)
         audio_filename = f"podcast_{podcast.id}.mp3"
-        audio_path = os.path.join(AUDIO_DIR, audio_filename)
-        
-        async with aiofiles.open(audio_path, "wb") as f:
-            await f.write(audio_bytes)
-        
-        audio_url = f"/api/podcasts/{podcast.id}/audio"
+        audio_url, local_path = await storage_service.upload_audio(
+            audio_bytes=audio_bytes,
+            filename=audio_filename,
+            folder="podcasts"
+        )
         
         # Generate transcript text
         transcript_text = "\n".join([
@@ -124,7 +119,7 @@ async def generate_podcast(
         podcast = await podcast_crud.set_podcast_audio(
             db,
             podcast.id,
-            audio_url=audio_path,
+            audio_url=local_path,  # Store local path in DB
             audio_duration=duration,
             audio_size=len(audio_bytes),
             transcript=transcript_text,

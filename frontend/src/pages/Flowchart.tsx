@@ -1,53 +1,57 @@
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { motion } from "framer-motion";
-import { ArrowDown } from "lucide-react";
+import { ArrowDown, Info } from "lucide-react";
+
+const API_URL = "http://localhost:8000/api";
 
 const flowNodes = [
   {
     id: "problem",
-    label: "Problem Statement",
-    desc: "Sequence transduction models rely on complex RNNs or CNNs. Attention mechanisms have limited global dependency modeling.",
+    label: "Hypothesis",
+    desc: "The primary research question or problem addressed by the paper.",
     color: "border-primary/40 bg-primary/5",
     labelColor: "text-primary",
   },
   {
     id: "method",
-    label: "Proposed Method",
-    desc: "Transformer architecture based entirely on attention mechanisms — no recurrence, no convolution.",
+    label: "Methodology",
+    desc: "The experimental setup or theoretical framework proposed.",
     color: "border-gold/40 bg-gold/5",
     labelColor: "text-gold",
   },
   {
-    id: "dataset",
-    label: "Dataset",
-    desc: "WMT 2014 English-German (4.5M sentence pairs) and English-French (36M sentence pairs) translation tasks.",
+    id: "eval",
+    label: "Analysis",
+    desc: "The evaluation metrics and comparison against baselines.",
     color: "border-indigo/40 bg-indigo/5",
     labelColor: "text-indigo-light",
   },
   {
-    id: "eval",
-    label: "Evaluation",
-    desc: "BLEU score benchmarking against state-of-the-art models. Computational cost comparison in FLOPs.",
+    id: "results",
+    label: "Key Conclusion",
+    desc: "The main findings and their statistical significance.",
     color: "border-accent/40 bg-accent/5",
     labelColor: "text-accent",
-  },
-  {
-    id: "results",
-    label: "Results",
-    desc: "28.4 BLEU on EN-DE, 41.0 on EN-FR. Trained in 12 hours on 8 P100 GPUs — orders of magnitude faster.",
-    color: "border-primary/40 bg-primary/5",
-    labelColor: "text-primary",
-  },
-  {
-    id: "applications",
-    label: "Applications",
-    desc: "Machine translation, text summarization, image generation, protein structure prediction, and code synthesis.",
-    color: "border-gold/40 bg-gold/5",
-    labelColor: "text-gold",
   },
 ];
 
 export default function FlowchartPage() {
+  const [paperData, setPaperData] = useState<any>(null);
+
+  useEffect(() => {
+    const paperId = localStorage.getItem("currentPaperId");
+    const token = localStorage.getItem("token");
+    if (paperId && token) {
+      fetch(`${API_URL}/papers/${paperId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => setPaperData(data))
+        .catch(console.error);
+    }
+  }, []);
+
   return (
     <DashboardLayout title="Flowchart View">
       <div className="max-w-2xl mx-auto py-4">
@@ -57,12 +61,20 @@ export default function FlowchartPage() {
           animate={{ opacity: 1, y: 0 }}
         >
           <h2 className="font-display text-2xl font-bold text-foreground mb-1">
-            Attention Is All You Need
+            {paperData?.title || "Research Paper Flow"}
           </h2>
-          <p className="text-muted-foreground text-sm">Research methodology flowchart</p>
+          <p className="text-muted-foreground text-sm">Visual methodology roadmap</p>
         </motion.div>
 
-        <div className="space-y-0">
+        <div className="mb-8 p-4 rounded-2xl bg-primary/5 border border-primary/20 flex gap-3">
+          <Info className="w-5 h-5 text-primary shrink-0" />
+          <p className="text-xs text-muted-foreground italic">
+            The flow below illustrates the typical research structure of {paperData?.title || "your study"}.
+            Individual node extraction for this specific paper is currently in optimization phase.
+          </p>
+        </div>
+
+        <div className="space-y-0 opacity-80">
           {flowNodes.map((node, i) => (
             <motion.div
               key={node.id}

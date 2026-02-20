@@ -19,7 +19,63 @@ class OpenAIService:
         # Initialize Groq client
         self.groq_client = AsyncGroq(api_key=settings.groq_api_key)
         self.groq_model = settings.groq_model
+        
+        # Initialize Ollama client (using OpenAI-compatible endpoint)
+        # We use a dummy API key as Ollama doesn't require one for local use
+        self.ollama_client = AsyncOpenAI(
+            api_key="ollama",
+            base_url=settings.ollama_base_url,
+            timeout=180.0  # Increased timeout for local processing
+        )
+        self.ollama_model = settings.ollama_model
     
+    async def _call_ai_service(self, messages: List[Dict[str, str]], max_tokens: int, temperature: float) -> str:
+        """Helper to call AI service with priority: Ollama -> OpenAI -> Groq."""
+        # 1. Try Ollama (Local)
+        try:
+            response = await self.ollama_client.chat.completions.create(
+                model=self.ollama_model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Ollama not available or error, trying OpenAI: {e}")
+
+        # 2. Try OpenAI
+        # Check if OpenAI key is valid (not placeholder)
+        is_openai_valid = (
+            settings.openai_api_key 
+            and settings.openai_api_key != "sk-your-openai-api-key"
+            and not settings.openai_api_key.startswith("sk-your-")
+        )
+
+        if is_openai_valid:
+            try:
+                response = await self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                print(f"OpenAI error, falling back to Groq: {e}")
+        
+        # 3. Fallback to Groq
+        try:
+            response = await self.groq_client.chat.completions.create(
+                model=self.groq_model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Groq fallback error: {e}")
+            raise e
+
     async def generate_summary(self, text: str, max_tokens: int = 1000) -> str:
         """Generate a summary of the paper text."""
         prompt = f"""You are a research assistant. Summarize the following academic paper in a clear, structured format.
@@ -34,17 +90,14 @@ class OpenAIService:
         
         Summary:"""
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        return await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You are an expert research assistant specialized in summarizing academic papers."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=max_tokens,
-            temperature=0.3,
+            temperature=0.3
         )
-        
-        return response.choices[0].message.content
     
     async def extract_topics(self, text: str) -> List[str]:
         """Extract key topics from paper text."""
@@ -55,18 +108,26 @@ class OpenAIService:
         
         Topics:"""
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
+        messages=[
                 {"role": "system", "content": "You are an expert at identifying research topics."},
                 {"role": "user", "content": prompt}
-            ],
+            ]
+        
+        response_content = await self._call_ai_service(
+            messages=messages,
             max_tokens=300,
-            temperature=0.3,
+            temperature=0.3
         )
         
         try:
-            topics = json.loads(response.choices[0].message.content)
+            # Clean JSON if wrapped in code blocks
+            content = response_content.strip()
+            if content.startswith("```json"):
+                content = content[7:-3]
+            elif content.startswith("```"):
+                content = content[3:-3]
+            
+            topics = json.loads(content)
             return topics if isinstance(topics, list) else []
         except:
             return []
@@ -80,18 +141,25 @@ class OpenAIService:
         
         Key Findings:"""
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
+        messages=[
                 {"role": "system", "content": "You are an expert at analyzing research findings."},
                 {"role": "user", "content": prompt}
-            ],
+            ]
+        
+        response_content = await self._call_ai_service(
+            messages=messages,
             max_tokens=500,
-            temperature=0.3,
+            temperature=0.3
         )
         
         try:
-            findings = json.loads(response.choices[0].message.content)
+            content = response_content.strip()
+            if content.startswith("```json"):
+                content = content[7:-3]
+            elif content.startswith("```"):
+                content = content[3:-3]
+                
+            findings = json.loads(content)
             return findings if isinstance(findings, list) else []
         except:
             return []
@@ -105,17 +173,14 @@ class OpenAIService:
         
         Methodology:"""
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        return await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You are an expert at explaining research methodologies."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=800,
-            temperature=0.3,
+            temperature=0.3
         )
-        
-        return response.choices[0].message.content
     
     async def chat(
         self,
@@ -124,19 +189,23 @@ class OpenAIService:
         chat_history: Optional[List[Dict[str, str]]] = None
     ) -> tuple[str, int]:
         """Answer a question about the paper using RAG."""
-        system_prompt = f"""You are VoxScholar AI, an expert research assistant. 
-        Answer questions about research papers based ONLY on the provided context.
-        If the answer is not in the context, say so clearly.
-        Be precise, helpful, and cite specific parts when possible.
-        
-        Context from paper:
-        {context[:6000]}
-        
-        Guidelines:
-        - Use simple language for complex concepts
-        - Provide examples when helpful
-        - If the question is outside the paper's scope, acknowledge it
-        """
+        system_prompt = f"""You are VoxScholar AI, a world-class research assistant and academic expert. 
+    Your goal is to provide deep, well-framed, and insightful answers based ONLY on the provided research context.
+
+    CRITICAL GUIDELINES:
+    1. STRICT ADHERENCE: You must ONLY answer questions that are directly or indirectly related to the provided research paper context.
+    2. REFUSE OUT-OF-CONTEXT QUESTIONS: If the user asks a question that is NOT related to the paper (e.g., general knowledge like "Who is Narendra Modi?", personal advice, or pop culture), you must politely but firmly decline. 
+       Use this exact phrasing (or something very similar): "I'm sorry, but this question is not related to the research paper you uploaded. I am designed to focus specifically on analyzing and explaining your research data."
+    3. BE DETAILED: When answering relevant research questions, provide comprehensive and structured explanations using the findings from the paper.
+    4. STRUCTURE: Use markdown (bullet points, bold text, numbered lists) to make complex information digestible.
+    5. ENGAGEMENT: At the end of every relevant research answer, suggest 2-3 deep follow-up questions specifically based on the paper's content.
+    6. STYLE: Maintain a professional, academic, and focused tone.
+    
+    Context from Research Paper:
+    {context[:12000]}
+    
+    Current User Request: {message}
+    """
         
         messages = [{"role": "system", "content": system_prompt}]
         
@@ -147,16 +216,15 @@ class OpenAIService:
         
         messages.append({"role": "user", "content": message})
         
-        # Use Groq for faster conversational RAG!
-        response = await self.groq_client.chat.completions.create(
-            model=self.groq_model,
+        # Use prioritized AI service logic
+        content = await self._call_ai_service(
             messages=messages,
             max_tokens=1500,
-            temperature=0.5,
+            temperature=0.5
         )
         
-        content = response.choices[0].message.content
-        tokens_used = response.usage.total_tokens if response.usage else 0
+        # Approximate tokens used (since Ollama might not return it in the same way)
+        tokens_used = len(content.split()) + len(message.split()) + 500 
         
         return content, tokens_used
     
@@ -209,18 +277,23 @@ class OpenAIService:
         Total duration should be around 4-5 minutes.
         """
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        response_content = await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You are a professional podcast script writer."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=3000,
-            temperature=0.7,
+            temperature=0.7
         )
         
         try:
-            script = json.loads(response.choices[0].message.content)
+            content = response_content.strip()
+            if content.startswith("```json"):
+                content = content[7:-3]
+            elif content.startswith("```"):
+                content = content[3:-3]
+                
+            script = json.loads(content)
             return script if isinstance(script, list) else []
         except:
             return []
@@ -235,17 +308,14 @@ class OpenAIService:
 
         Provide a clear explanation that a non-expert can understand."""
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        return await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You are an expert at explaining mathematical concepts simply."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500,
-            temperature=0.3,
+            temperature=0.3
         )
-        
-        return response.choices[0].message.content
     
     async def generate_study_notes(self, text: str, title: str) -> str:
         """Generate study notes from paper text."""
@@ -264,17 +334,14 @@ class OpenAIService:
         Use markdown format.
         """
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        return await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You are an expert at creating study materials."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
-            temperature=0.3,
+            temperature=0.3
         )
-        
-        return response.choices[0].message.content
 
 
 # Singleton instance

@@ -1,7 +1,7 @@
 import os
 import aiofiles
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -161,14 +161,63 @@ async def delete_paper(
     
     return MessageResponse(message="Paper deleted successfully")
 
+async def run_processing(paper_id: int, user_id: int, db_session_factory):
+    """Background task for processing paper."""
+    from app.core.database import SessionLocal
+    async with SessionLocal() as db:
+        paper = await paper_crud.get_paper(db, paper_id)
+        if not paper:
+            return
+
+        try:
+            print(f"DEBUG: [Background] Starting processing for paper {paper_id}")
+            
+            # 1. Extract text from PDF
+            print(f"DEBUG: [Background] Extracting text")
+            raw_text = await pdf_service.extract_text(paper.file_path)
+            paper.raw_text = raw_text
+            await db.commit()
+            
+            # 2. AI Analysis
+            print("DEBUG: [Background] Generating summary...")
+            summary = await openai_service.generate_summary(raw_text)
+            paper.summary = summary
+            
+            print("DEBUG: [Background] Extracting topics...")
+            topics = await openai_service.extract_topics(raw_text)
+            paper.topics = topics
+            
+            print("DEBUG: [Background] Extracting findings...")
+            key_findings = await openai_service.extract_key_findings(raw_text)
+            paper.key_findings = key_findings
+            
+            print("DEBUG: [Background] Generating methodology...")
+            methodology = await openai_service.generate_methodology(raw_text)
+            paper.methodology = methodology
+            
+            # Mark as processed
+            paper.is_processed = True
+            paper.processing_status = "completed"
+            
+            await db.commit()
+            print(f"DEBUG: [Background] Processing complete for paper {paper_id}")
+            
+        except Exception as e:
+            print(f"DEBUG: [Background] Error processing paper {paper_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            paper.processing_status = "failed"
+            paper.processing_error = str(e)
+            await db.commit()
 
 @router.post("/{paper_id}/process", response_model=PaperProcessingStatus)
 async def process_paper(
     paper_id: int,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Process a paper (extract text, generate summary, etc.)."""
+    """Start paper processing in the background."""
     paper = await paper_crud.get_paper(db, paper_id)
     
     if not paper:
@@ -183,54 +232,28 @@ async def process_paper(
             detail="Not authorized to process this paper"
         )
     
-    try:
-        # Update status to processing
-        paper.processing_status = "processing"
-        await db.commit()
-        
-        # Extract text from PDF
-        raw_text = await pdf_service.extract_text(paper.file_path)
-        paper.raw_text = raw_text
-        
-        # Generate summary
-        summary = await openai_service.generate_summary(raw_text)
-        paper.summary = summary
-        
-        # Extract topics
-        topics = await openai_service.extract_topics(raw_text)
-        paper.topics = topics
-        
-        # Extract key findings
-        key_findings = await openai_service.extract_key_findings(raw_text)
-        paper.key_findings = key_findings
-        
-        # Extract methodology
-        methodology = await openai_service.generate_methodology(raw_text)
-        paper.methodology = methodology
-        
-        # Mark as processed
-        paper.is_processed = True
-        paper.processing_status = "completed"
-        
-        await db.commit()
-        await db.refresh(paper)
-        
+    if paper.processing_status == "processing":
         return PaperProcessingStatus(
             paper_id=paper.id,
-            status=paper.processing_status,
-            progress=100,
-            message="Paper processed successfully"
+            status="processing",
+            progress=50,
+            message="Already processing"
         )
+
+    # Reset/Set status to processing
+    paper.processing_status = "processing"
+    paper.processing_error = None
+    await db.commit()
+
+    # Add background task
+    background_tasks.add_task(run_processing, paper_id, current_user.id, None)
     
-    except Exception as e:
-        paper.processing_status = "failed"
-        paper.processing_error = str(e)
-        await db.commit()
-        
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing paper: {str(e)}"
-        )
+    return PaperProcessingStatus(
+        paper_id=paper.id,
+        status="processing",
+        progress=10,
+        message="Processing started in background"
+    )
 
 
 @router.get("/{paper_id}/status", response_model=PaperProcessingStatus)
