@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # PDF.co 
     pdf_co_api_key: str = ""
     
+    # Google OAuth
+    google_client_id: str = ""
+    
     # ElevenLabs
     elevenlabs_api_key: str = ""
     voice_id_male: str = "21m00Tcm4TlvDq8ikWAM"

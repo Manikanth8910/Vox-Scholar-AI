@@ -40,6 +40,20 @@ async def create_note(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Paper not found"
             )
+        
+        # Check if note already exists for this paper - Enforce "1 note per paper"
+        existing_notes = await note_crud.list_user_notes(db, current_user.id, paper_id=note_data.paper_id)
+        if existing_notes:
+            existing = existing_notes[0]
+            # Perform an update (upsert behavior)
+            from app.schemas.note import NoteUpdate
+            update_data = NoteUpdate(
+                title=note_data.title,
+                content=note_data.content,
+                tags=note_data.tags,
+                is_public=note_data.is_public
+            )
+            return await note_crud.update_note(db, existing, update_data)
     
     note = await note_crud.create_note(db, current_user.id, note_data)
     return note
@@ -190,15 +204,27 @@ async def generate_study_notes(
         title=paper.title
     )
     
-    # Create note
-    note_data = NoteCreate(
-        paper_id=paper_id,
-        title=f"Study Notes: {paper.title}",
-        content=notes_content,
-        tags=["generated", "study-notes"],
-        is_public=False
-    )
+    # Create or update note - Enforce "1 note per paper"
+    existing_notes = await note_crud.list_user_notes(db, current_user.id, paper_id=paper_id)
     
-    note = await note_crud.create_note(db, current_user.id, note_data)
+    if existing_notes:
+        existing = existing_notes[0]
+        from app.schemas.note import NoteUpdate
+        update_data = NoteUpdate(
+            title=f"Study Notes: {paper.title}",
+            content=notes_content, # potentially append or replace. User said "1 note", so replace/update is best.
+            tags=list(set((existing.tags or []) + ["generated", "study-notes"]))
+        )
+        note = await note_crud.update_note(db, existing, update_data)
+    else:
+        note_data = NoteCreate(
+            paper_id=paper_id,
+            title=f"Study Notes: {paper.title}",
+            content=notes_content,
+            tags=["generated", "study-notes"],
+            is_public=False
+        )
+        note = await note_crud.create_note(db, current_user.id, note_data)
+    
     return note
 

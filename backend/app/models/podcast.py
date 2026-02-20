@@ -46,6 +46,7 @@ class Podcast(Base, TimestampMixin):
     
     # Usage stats
     play_count = Column(Integer, default=0)
+    last_position = Column(Float, default=0.0)  # Playback progress in seconds
     last_played_at = Column(String(50), nullable=True)  # ISO timestamp
     
     # Relationships

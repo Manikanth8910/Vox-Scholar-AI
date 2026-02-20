@@ -7,9 +7,13 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 2679,
+    strictPort: true,
     hmr: {
       overlay: false,
+    },
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
