@@ -1,24 +1,17 @@
 """
-<<<<<<< HEAD
 OpenAI service for AI-powered features.
-=======
-AI service — all inference runs via OpenRouter (OpenAI-compatible gateway).
->>>>>>> fab2c02 (Few functional changes done)
+Supports fallback logic: Ollama -> OpenAI -> Groq.
 """
 from typing import Optional, List, Dict, Any
 import json
 from openai import AsyncOpenAI
-<<<<<<< HEAD
 from groq import AsyncGroq
-=======
->>>>>>> fab2c02 (Few functional changes done)
 
 from app.core.config import settings
 
 
 class OpenAIService:
-<<<<<<< HEAD
-    """Service for OpenAI API interactions."""
+    """Service for AI interactions with fallback logic."""
     
     def __init__(self):
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
@@ -29,16 +22,38 @@ class OpenAIService:
         self.groq_model = settings.groq_model
         
         # Initialize Ollama client (using OpenAI-compatible endpoint)
-        # We use a dummy API key as Ollama doesn't require one for local use
         self.ollama_client = AsyncOpenAI(
             api_key="ollama",
             base_url=settings.ollama_base_url,
-            timeout=180.0  # Increased timeout for local processing
+            timeout=180.0
         )
         self.ollama_model = settings.ollama_model
+        
+        # Make OpenRouter client optional if they want it
+        if settings.openrouter_api_key:
+            self.openrouter_client = AsyncOpenAI(
+                api_key=settings.openrouter_api_key,
+                base_url="https://openrouter.ai/api/v1",
+            )
+            self.openrouter_model = settings.openrouter_model
+        else:
+            self.openrouter_client = None
     
     async def _call_ai_service(self, messages: List[Dict[str, str]], max_tokens: int, temperature: float) -> str:
-        """Helper to call AI service with priority: Ollama -> OpenAI -> Groq."""
+        """Helper to call AI service with priority: OpenRouter -> Ollama -> OpenAI -> Groq."""
+        # Optional: Priority to OpenRouter if configured and we are trying to use it
+        if self.openrouter_client and settings.openrouter_api_key:
+            try:
+                response = await self.openrouter_client.chat.completions.create(
+                    model=self.openrouter_model,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                print(f"OpenRouter error: {e}, falling through...")
+
         # 1. Try Ollama (Local)
         try:
             response = await self.ollama_client.chat.completions.create(
@@ -52,7 +67,6 @@ class OpenAIService:
             print(f"Ollama not available or error, trying OpenAI: {e}")
 
         # 2. Try OpenAI
-        # Check if OpenAI key is valid (not placeholder)
         is_openai_valid = (
             settings.openai_api_key 
             and settings.openai_api_key != "sk-your-openai-api-key"
@@ -83,17 +97,6 @@ class OpenAIService:
         except Exception as e:
             print(f"Groq fallback error: {e}")
             raise e
-=======
-    """Service for AI-powered features using OpenRouter as the primary LLM gateway."""
-
-    def __init__(self):
-        # OpenRouter — OpenAI-compatible API at a different base_url
-        self.client = AsyncOpenAI(
-            api_key=settings.openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1",
-        )
-        self.model = settings.openrouter_model
->>>>>>> fab2c02 (Few functional changes done)
 
     async def generate_summary(self, text: str, max_tokens: int = 1000) -> str:
         """Generate a summary of the paper text."""
@@ -108,14 +111,8 @@ class OpenAIService:
         {text[:8000]}  # Limit text length
         
         Summary:"""
-<<<<<<< HEAD
         
         return await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=[
                 {"role": "system", "content": "You are an expert research assistant specialized in summarizing academic papers."},
                 {"role": "user", "content": prompt}
@@ -132,19 +129,11 @@ class OpenAIService:
         {text[:4000]}
         
         Topics:"""
-<<<<<<< HEAD
         
         messages=[
-                {"role": "system", "content": "You are an expert at identifying research topics."},
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
                 {"role": "system", "content": "You are an expert at identifying research topics. Return only valid JSON arrays."},
->>>>>>> fab2c02 (Few functional changes done)
                 {"role": "user", "content": prompt}
-            ]
+        ]
         
         response_content = await self._call_ai_service(
             messages=messages,
@@ -153,7 +142,6 @@ class OpenAIService:
         )
         
         try:
-            # Clean JSON if wrapped in code blocks
             content = response_content.strip()
             if content.startswith("```json"):
                 content = content[7:-3]
@@ -173,19 +161,11 @@ class OpenAIService:
         {text[:4000]}
         
         Key Findings:"""
-<<<<<<< HEAD
         
         messages=[
-                {"role": "system", "content": "You are an expert at analyzing research findings."},
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=[
                 {"role": "system", "content": "You are an expert at analyzing research findings. Return only valid JSON arrays."},
->>>>>>> fab2c02 (Few functional changes done)
                 {"role": "user", "content": prompt}
-            ]
+        ]
         
         response_content = await self._call_ai_service(
             messages=messages,
@@ -213,14 +193,8 @@ class OpenAIService:
         {text[:6000]}
         
         Methodology:"""
-<<<<<<< HEAD
         
         return await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=[
                 {"role": "system", "content": "You are an expert at explaining research methodologies."},
                 {"role": "user", "content": prompt}
@@ -236,10 +210,6 @@ class OpenAIService:
         chat_history: Optional[List[Dict[str, str]]] = None
     ) -> tuple[str, int]:
         """Answer a question about the paper using RAG."""
-<<<<<<< HEAD
-        system_prompt = f"""You are VoxScholar AI, a world-class research assistant and academic expert. 
-    Your goal is to provide deep, well-framed, and insightful answers based ONLY on the provided research context.
-=======
         system_prompt = f"""You are VoxScholar AI, an expert and friendly research assistant.
         Answer questions about research papers based ONLY on the provided context.
         If the answer is not in the context, say so clearly.
@@ -257,58 +227,39 @@ class OpenAIService:
         - Prefer bullet points over long run-on paragraphs.
         - End with a short 1-line summary or actionable takeaway if relevant.
         - Use simple language for complex concepts unless asked for technical depth.
-        """
->>>>>>> fab2c02 (Few functional changes done)
 
-    CRITICAL GUIDELINES:
-    1. STRICT ADHERENCE: You must ONLY answer questions that are directly or indirectly related to the provided research paper context.
-    2. REFUSE OUT-OF-CONTEXT QUESTIONS: If the user asks a question that is NOT related to the paper (e.g., general knowledge like "Who is Narendra Modi?", personal advice, or pop culture), you must politely but firmly decline. 
-       Use this exact phrasing (or something very similar): "I'm sorry, but this question is not related to the research paper you uploaded. I am designed to focus specifically on analyzing and explaining your research data."
-    3. BE DETAILED: When answering relevant research questions, provide comprehensive and structured explanations using the findings from the paper.
-    4. STRUCTURE: Use markdown (bullet points, bold text, numbered lists) to make complex information digestible.
-    5. ENGAGEMENT: At the end of every relevant research answer, suggest 2-3 deep follow-up questions specifically based on the paper's content.
-    6. STYLE: Maintain a professional, academic, and focused tone.
-    
-    Context from Research Paper:
-    {context[:12000]}
-    
-    Current User Request: {message}
-    """
+        CRITICAL GUIDELINES:
+        1. STRICT ADHERENCE: You must ONLY answer questions that are directly or indirectly related to the provided research paper context.
+        2. REFUSE OUT-OF-CONTEXT QUESTIONS: If the user asks a question that is NOT related to the paper (e.g., general knowledge like "Who is Narendra Modi?", personal advice, or pop culture), you must politely but firmly decline. 
+           Use this exact phrasing (or something very similar): "I'm sorry, but this question is not related to the research paper you uploaded. I am designed to focus specifically on analyzing and explaining your research data."
+        3. BE DETAILED: When answering relevant research questions, provide comprehensive and structured explanations using the findings from the paper.
+        4. STRUCTURE: Use markdown (bullet points, bold text, numbered lists) to make complex information digestible.
+        5. ENGAGEMENT: At the end of every relevant research answer, suggest 2-3 deep follow-up questions specifically based on the paper's content.
+        6. STYLE: Maintain a professional, academic, and focused tone.
+        
+        Context from Research Paper:
+        {context[:12000]}
+        
+        Current User Request: {message}
+        """
         
         messages = [{"role": "system", "content": system_prompt}]
         
-        # Add chat history
         if chat_history:
-            for msg in chat_history[-10:]:  # Last 10 messages
+            for msg in chat_history[-10:]:
                 messages.append(msg)
         
         messages.append({"role": "user", "content": message})
-<<<<<<< HEAD
         
-        # Use prioritized AI service logic
         content = await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=messages,
             max_tokens=1500,
             temperature=0.5
         )
-<<<<<<< HEAD
         
-        # Approximate tokens used (since Ollama might not return it in the same way)
+        content = content or ""
         tokens_used = len(content.split()) + len(message.split()) + 500 
-        
-        return content, tokens_used
-    
-=======
 
-        content = response.choices[0].message.content or ""
-        tokens_used = response.usage.total_tokens if response.usage else 0
-
-        # Post-process: clean up stray markdown symbols the model sometimes emits
         content = self._clean_chat_response(content)
 
         return content, tokens_used
@@ -316,33 +267,22 @@ class OpenAIService:
     def _clean_chat_response(self, text: str) -> str:
         """Strip stray asterisks and clean up AI chat output for consistent display."""
         import re
-        # Remove *** (bold+italic decorators used unnecessarily)
         text = re.sub(r'\*{3,}', '', text)
-        # Convert **text** that wraps entire lines (title-like usage) into clean plain text
-        # but preserve inline **bold** for meaningful emphasis
-        # Replace lines that are ONLY **something** with just the inner text
         text = re.sub(r'^\*\*(.+?)\*\*$', r'\1', text, flags=re.MULTILINE)
-        # Strip lone * at start/end of words (accidental italics)
         text = re.sub(r'(?<![\w\*])\*(?![\w\*])', '', text)
-        # Clean up multiple consecutive blank lines -> at most 2
         text = re.sub(r'\n{3,}', '\n\n', text)
         return text.strip()
 
->>>>>>> fab2c02 (Few functional changes done)
     async def generate_podcast_script(
         self,
         paper_title: str,
         summary: str,
         key_findings: List[str],
-<<<<<<< HEAD
-        style: str = "educational"
-=======
         style: str = "educational",
         voice_male_name: str = "Prabhat",
         voice_female_name: str = "Neerja",
         persona_male_style: Optional[str] = None,
         persona_female_style: Optional[str] = None,
->>>>>>> fab2c02 (Few functional changes done)
     ) -> List[Dict[str, Any]]:
         """Generate a podcast script with two speakers."""
         
@@ -379,16 +319,7 @@ class OpenAIService:
             system_prompt = """Generate an educational podcast script about a research paper.
             Two speakers discuss the paper in an engaging, easy-to-understand way.
             Include: introduction, background, key concepts, findings, and conclusion."""
-<<<<<<< HEAD
-        
-        findings_text = "\n".join([f"- {f}" for f in key_findings])
-        
-        prompt = f"""{system_prompt}
-=======
 
-        # Build persona descriptions
-        male_persona = f"{voice_male_name}"
-        female_persona = f"{voice_female_name}"
         persona_instructions = ""
         if persona_male_style or persona_female_style:
             persona_instructions = f"""
@@ -404,7 +335,6 @@ class OpenAIService:
         findings_text = "\n".join([f"- {f}" for f in key_findings])
 
         prompt = f"""{system_prompt}{persona_instructions}
->>>>>>> fab2c02 (Few functional changes done)
 
         Paper: {paper_title}
         Summary: {summary}
@@ -420,14 +350,8 @@ class OpenAIService:
         Make it engaging and educational. Each segment should be 30-60 seconds when spoken.
         Total duration should be around 4-5 minutes.
         """
-<<<<<<< HEAD
         
         response_content = await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=[
                 {"role": "system", "content": "You are a professional podcast script writer."},
                 {"role": "user", "content": prompt}
@@ -457,14 +381,8 @@ class OpenAIService:
         Context: {context}
 
         Provide a clear explanation that a non-expert can understand."""
-<<<<<<< HEAD
         
         return await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=[
                 {"role": "system", "content": "You are an expert at explaining mathematical concepts simply."},
                 {"role": "user", "content": prompt}
@@ -489,14 +407,8 @@ class OpenAIService:
         - Questions for review
         Use markdown format.
         """
-<<<<<<< HEAD
         
         return await self._call_ai_service(
-=======
-
-        response = await self.client.chat.completions.create(
-            model=self.model,
->>>>>>> fab2c02 (Few functional changes done)
             messages=[
                 {"role": "system", "content": "You are an expert at creating study materials."},
                 {"role": "user", "content": prompt}
@@ -504,10 +416,6 @@ class OpenAIService:
             max_tokens=2000,
             temperature=0.3
         )
-
-<<<<<<< HEAD
-=======
-        return response.choices[0].message.content
 
     async def generate_flowchart(self, text: str) -> List[Dict[str, str]]:
         """Generate flowchart nodes directly from paper context."""
@@ -523,8 +431,7 @@ class OpenAIService:
         Text: {text[:6000]}
         """
 
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        response_content = await self._call_ai_service(
             messages=[
                 {"role": "system", "content": "You output strict JSON arrays only."},
                 {"role": "user", "content": prompt}
@@ -533,7 +440,7 @@ class OpenAIService:
             temperature=0.2,
         )
 
-        content = response.choices[0].message.content or "[]"
+        content = response_content or "[]"
         content = content.strip()
         if content.startswith('```json'):
             content = content[7:-3]
@@ -546,8 +453,6 @@ class OpenAIService:
         except:
             return []
 
->>>>>>> fab2c02 (Few functional changes done)
 
 # Singleton instance
 openai_service = OpenAIService()
-
