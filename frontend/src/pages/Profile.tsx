@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { motion } from "framer-motion";
-import { Edit3, BookOpen, MessageSquare, Headphones, User, FileText } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Edit3, BookOpen, MessageSquare, Headphones, FileText, X, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -8,15 +8,24 @@ import { useToast } from "@/hooks/use-toast";
 export default function Profile() {
   const [profile, setProfile] = useState<any>(null);
   const [recentPapers, setRecentPapers] = useState<any[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Fetch profile stats
-    api.get('/auth/profile')
-      .then(({ data }) => setProfile(data))
+  const fetchProfile = () => {
+    api.get('/auth/me')
+      .then(({ data }) => {
+        setProfile(data);
+        setEditName(data.full_name || "");
+        setEditUsername(data.username || "");
+      })
       .catch(() => { });
+  };
 
-    // Fetch papers
+  useEffect(() => {
+    fetchProfile();
     api.get('/papers?limit=5')
       .then(({ data }) => {
         const list = Array.isArray(data) ? data : data?.items ?? [];
@@ -25,6 +34,27 @@ export default function Profile() {
       .catch(() => { });
   }, []);
 
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      await api.put('/users/profile', {
+        full_name: editName,
+        username: editUsername,
+      });
+      toast({ title: "Profile Updated", description: "Your profile has been saved." });
+      fetchProfile();
+      setEditing(false);
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.response?.data?.detail || "Failed to update profile",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const userInitial = profile?.full_name?.[0] || profile?.username?.[0] || "?";
 
   const statsList = [
@@ -32,37 +62,81 @@ export default function Profile() {
     { label: "Questions Asked", value: profile?.questions_asked?.toString() || "0", icon: MessageSquare },
     { label: "Notes Created", value: profile?.notes_count?.toString() || "0", icon: BookOpen },
   ];
+
   return (
     <DashboardLayout title="Profile">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Profile card */}
-        <motion.div
-          className="card-premium p-6"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div className="card-premium p-6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-start gap-5">
             <div className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center text-white font-display text-3xl font-bold shadow-glow shrink-0">
               {userInitial}
             </div>
-            <div className="flex-1">
-              <h2 className="font-display text-2xl font-bold text-foreground">{profile?.full_name || "New User"}</h2>
-              <p className="text-muted-foreground">{profile?.email || profile?.username}</p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                {profile?.role === 'admin' ? (
-                  <span className="px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium">Administrator</span>
-                ) : (
-                  <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Scholar</span>
-                )}
-                {profile?.username && (
-                  <span className="px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium">@{profile.username}</span>
-                )}
+
+            {editing ? (
+              <div className="flex-1 space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Full Name</label>
+                  <input
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Full name"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Username</label>
+                  <input
+                    value={editUsername}
+                    onChange={e => setEditUsername(e.target.value)}
+                    className="w-full bg-background border border-input rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="Username"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-all disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    {saving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    onClick={() => setEditing(false)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-foreground text-sm hover:bg-muted transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-all">
-              <Edit3 className="w-4 h-4" />
-              Edit Profile
-            </button>
+            ) : (
+              <div className="flex-1">
+                <h2 className="font-display text-2xl font-bold text-foreground">{profile?.full_name || "New User"}</h2>
+                <p className="text-muted-foreground">{profile?.email || profile?.username}</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {profile?.role === 'admin' ? (
+                    <span className="px-3 py-1 rounded-full bg-gold/10 text-gold text-xs font-medium">Administrator</span>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">Scholar</span>
+                  )}
+                  {profile?.username && (
+                    <span className="px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-medium">@{profile.username}</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!editing && (
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-all shrink-0"
+              >
+                <Edit3 className="w-4 h-4" />
+                Edit Profile
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-border">
@@ -105,7 +179,7 @@ export default function Profile() {
         >
           <h3 className="font-display font-semibold text-foreground mb-4">Recently Studied Papers</h3>
           <div className="space-y-3">
-            {recentPapers.length > 0 ? recentPapers.map((paper, i) => (
+            {recentPapers.length > 0 ? recentPapers.map((paper) => (
               <div key={paper.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer group">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20">
                   <FileText className="w-4 h-4 text-primary" />

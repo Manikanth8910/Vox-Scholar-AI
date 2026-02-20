@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import api from "../../lib/api";
+import { useAudio } from "../../context/AudioContext";
 import {
   Headphones,
   LayoutDashboard,
@@ -16,6 +18,11 @@ import {
   Moon,
   Menu,
   X,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
 } from "lucide-react";
 
 const navItems = [
@@ -45,24 +52,53 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, title }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [dark, setDark] = useState(true);
+  const [dark, setDark] = useState(() => {
+    // Persist dark mode across pages via localStorage
+    return localStorage.getItem("theme") !== "light";
+  });
   const [mode, setMode] = useState("Research Mode");
   const [modeOpen, setModeOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
   const handleSignOut = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userName");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("currentPaperId");
+    localStorage.removeItem("current_paper_id");
     navigate("/");
   };
 
-  const userName = localStorage.getItem("userName") || "User";
-  const userInitial = userName.charAt(0).toUpperCase();
+  // Apply dark class to <html> so ALL screens share the same mode
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [dark]);
+
+  useEffect(() => {
+    api.get('/auth/me')
+      .then(({ data }) => setUser(data))
+      .catch(() => { });
+  }, []);
+
+  const audio = useAudio();
+  const userName = localStorage.getItem("userName") || user?.full_name || user?.username || "User";
+  const userInitial = (user?.full_name?.[0] || user?.username?.[0] || userName[0] || "?").toUpperCase();
+
+  const fmt = (s: number) => {
+    if (!s || isNaN(s)) return "0:00";
+    return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
+  };
 
   return (
-    <div className={dark ? "dark" : ""}>
+    <div>
       <div className="flex min-h-screen bg-background text-foreground">
         {/* Sidebar */}
         <aside
@@ -218,11 +254,68 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
           </header>
 
           {/* Page content */}
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <main className={`flex-1 p-4 md:p-6 overflow-auto ${audio.audioSrc ? 'pb-24' : ''}`}>
             {children}
           </main>
         </div>
       </div>
+
+      {/* Persistent Mini Player — visible on all screens while podcast plays */}
+      {audio.audioSrc && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border shadow-2xl px-4 py-2">
+          <div className="max-w-4xl mx-auto flex items-center gap-3">
+            {/* Album icon */}
+            <div className="w-9 h-9 rounded-lg bg-gradient-primary flex items-center justify-center shrink-0 shadow-glow">
+              <Headphones className="w-4 h-4 text-white" />
+            </div>
+            {/* Title */}
+            <div className="hidden sm:block min-w-0 w-36">
+              <p className="text-xs font-semibold text-foreground truncate">{audio.podcastTitle || "Podcast"}</p>
+              <p className="text-[10px] text-muted-foreground">{fmt(audio.currentTime)} / {fmt(audio.duration)}</p>
+            </div>
+            {/* Controls */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => audio.skip(-10)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <SkipBack className="w-4 h-4" />
+              </button>
+              <button
+                onClick={audio.togglePlay}
+                className="w-8 h-8 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow"
+              >
+                {audio.playing ? <Pause className="w-4 h-4 text-white" /> : <Play className="w-4 h-4 text-white ml-0.5" />}
+              </button>
+              <button onClick={() => audio.skip(10)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <SkipForward className="w-4 h-4" />
+              </button>
+            </div>
+            {/* Progress bar */}
+            <div
+              className="flex-1 h-1.5 bg-muted rounded-full cursor-pointer relative group"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                audio.seek((e.clientX - rect.left) / rect.width);
+              }}
+            >
+              <div
+                className="h-full bg-gradient-primary rounded-full transition-all"
+                style={{ width: `${audio.progress}%` }}
+              />
+            </div>
+            {/* Volume */}
+            <div className="hidden md:flex items-center gap-1.5 shrink-0">
+              <Volume2 className="w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="range" min={0} max={1} step={0.05}
+                value={audio.volume}
+                onChange={e => audio.setVolume(parseFloat(e.target.value))}
+                className="w-16 h-1 accent-primary cursor-pointer"
+              />
+            </div>
+            {/* Go to podcast */}
+            <Link to="/podcast" className="shrink-0 text-[10px] text-primary hover:underline hidden sm:block">Open ↗</Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

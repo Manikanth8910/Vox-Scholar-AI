@@ -79,11 +79,17 @@ class ChatMessageResponse(ChatMessageBase):
         from_attributes = True
 
 
+class ChatHistoryMessage(BaseModel):
+    """Simple chat history message (role + content)."""
+    role: str
+    content: str
+
+
 class ChatRequest(BaseModel):
     """Chat request for Q&A."""
     message: str
     paper_id: Optional[int] = None
-    chat_history: Optional[List[ChatMessageResponse]] = None
+    chat_history: Optional[List[ChatHistoryMessage]] = None
 
 
 class ChatResponse(BaseModel):

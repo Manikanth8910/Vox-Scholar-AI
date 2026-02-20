@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     # Ollama (Local)
     ollama_base_url: str = "http://localhost:11434/v1"
     ollama_model: str = "deepseek-r1"
+
+    # OpenRouter API
+    openrouter_api_key: str = ""
+    openrouter_model: str = "meta-llama/llama-3.3-70b-instruct"
     
     # PDF.co 
     pdf_co_api_key: str = ""

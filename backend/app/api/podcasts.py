@@ -82,12 +82,37 @@ async def generate_podcast(
     await podcast_crud.update_podcast_status(db, podcast.id, PodcastStatus.GENERATING)
     
     try:
+<<<<<<< HEAD
         # Generate script
+=======
+        # Resolve voice names — prefer custom persona names if provided
+        all_voices = edge_tts_service.get_available_voices() + elevenlabs_service.get_available_voices()
+        male_name = request.persona_male_name or "Prabhat"
+        female_name = request.persona_female_name or "Neerja"
+        
+        # Only fall back to voice name if no custom persona name is set
+        if not request.persona_male_name or not request.persona_female_name:
+            for v in all_voices:
+                if v['id'] == request.voice_male and not request.persona_male_name:
+                    male_name = v['name'].split(' (')[0]
+                if v['id'] == request.voice_female and not request.persona_female_name:
+                    female_name = v['name'].split(' (')[0]
+
+        # Generate script with personas
+>>>>>>> fab2c02 (Few functional changes done)
         script = await openai_service.generate_podcast_script(
             paper_title=paper.title,
             summary=paper.summary or "",
             key_findings=paper.key_findings or [],
+<<<<<<< HEAD
             style=request.style
+=======
+            style=request.style,
+            voice_male_name=male_name,
+            voice_female_name=female_name,
+            persona_male_style=request.persona_male_style,
+            persona_female_style=request.persona_female_style,
+>>>>>>> fab2c02 (Few functional changes done)
         )
         
         if not script:

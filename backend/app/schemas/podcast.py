@@ -99,6 +99,11 @@ class PodcastGenerationRequest(BaseModel):
     voice_female: Optional[str] = None
     speed: float = Field(1.0, ge=0.5, le=2.0)
     style: str = "educational"
+    # Custom persona fields
+    persona_male_name: Optional[str] = None       # e.g. "Dr. Alex"
+    persona_female_name: Optional[str] = None     # e.g. "Prof. Sara"
+    persona_male_style: Optional[str] = None      # e.g. "sceptical professor"
+    persona_female_style: Optional[str] = None    # e.g. "enthusiastic student"
 
 
 class PodcastGenerationStatus(BaseModel):

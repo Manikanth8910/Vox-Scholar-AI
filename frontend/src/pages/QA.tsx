@@ -2,8 +2,23 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Send, Volume2, Info, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+<<<<<<< HEAD
 
 const API_URL = "http://localhost:8000/api";
+=======
+import { useState, useEffect, useRef } from "react";
+import api from "../lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { marked } from "marked";
+
+// Configure marked for safe, clean rendering
+marked.setOptions({ breaks: true, gfm: true } as any);
+
+function renderMarkdown(text: string): string {
+  const raw = marked.parse(text || "") as string;
+  return raw;
+}
+>>>>>>> fab2c02 (Few functional changes done)
 
 export default function QAPage() {
   const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([]);
@@ -13,6 +28,7 @@ export default function QAPage() {
   const [paperData, setPaperData] = useState<any>(null);
 
   useEffect(() => {
+<<<<<<< HEAD
     const currentPaperId = localStorage.getItem('currentPaperId');
     const token = localStorage.getItem('token');
 
@@ -60,6 +76,22 @@ export default function QAPage() {
         role: "ai",
         text: "Hello! I've analyzed your paper. What specific insights or sections would you like me to explain?"
       }]);
+=======
+    const pid = localStorage.getItem("current_paper_id");
+    if (pid) {
+      api.get(`/papers/${pid}`).then(({ data }) => setCurrentPaper(data)).catch(() => { });
+      api.get(`/chat/history?paper_id=${pid}`).then(({ data }) => {
+        const history = data.messages.map((m: any) => ({
+          role: m.role === 'user' ? 'user' : 'ai',
+          text: m.content
+        }));
+        setMessages(history.length > 0 ? history : [
+          { role: "ai", text: "Hello! I'm ready to help you analyze your paper. Ask me anything!" }
+        ]);
+      }).catch(() => { });
+    } else {
+      setMessages([{ role: "ai", text: "Hello! Upload a research paper first, then ask me anything about it." }]);
+>>>>>>> fab2c02 (Few functional changes done)
     }
   }, []);
 
@@ -135,7 +167,11 @@ export default function QAPage() {
         </motion.div>
 
         {/* Messages */}
+<<<<<<< HEAD
         <div className="flex-1 overflow-y-auto space-y-4 mb-4 scrollbar-hide">
+=======
+        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 scrollbar-thin pr-1">
+>>>>>>> fab2c02 (Few functional changes done)
           <AnimatePresence>
             {messages.map((msg, i) => (
               <motion.div
@@ -146,7 +182,11 @@ export default function QAPage() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
+<<<<<<< HEAD
                   className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${msg.role === "user"
+=======
+                  className={`max-w-[82%] rounded-2xl px-4 py-3 ${msg.role === "user"
+>>>>>>> fab2c02 (Few functional changes done)
                     ? "bg-gradient-primary text-white rounded-br-sm"
                     : "bg-card border border-border text-foreground rounded-bl-sm"
                     }`}
@@ -156,6 +196,7 @@ export default function QAPage() {
                       <span className="text-xs font-bold text-primary uppercase tracking-tighter">
                         VoxScholar Expert Analysis
                       </span>
+<<<<<<< HEAD
                       <div className="flex gap-2">
                         <button className="text-xs text-muted-foreground hover:text-primary transition-colors">
                           <Volume2 className="w-3 h-3" />
@@ -166,10 +207,55 @@ export default function QAPage() {
                   <div className={`${msg.role === "ai" ? "prose prose-sm dark:prose-invert max-w-none text-foreground" : "text-white"} whitespace-pre-wrap text-sm leading-relaxed`}>
                     {msg.text}
                   </div>
+=======
+                      <button
+                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        onClick={() => {
+                          const utterance = new SpeechSynthesisUtterance(msg.text);
+                          window.speechSynthesis.speak(utterance);
+                        }}
+                      >
+                        <Volume2 className="w-3 h-3" />
+                        Play
+                      </button>
+                    </div>
+                  )}
+                  {msg.role === "ai" ? (
+                    <div
+                      className="text-sm leading-relaxed prose prose-sm prose-invert max-w-none
+                        [&_h2]:text-base [&_h2]:font-semibold [&_h2]:mt-3 [&_h2]:mb-1 [&_h2]:text-primary
+                        [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1
+                        [&_ul]:pl-4 [&_ul]:space-y-0.5 [&_li]:text-sm
+                        [&_ol]:pl-4 [&_ol]:space-y-0.5
+                        [&_strong]:text-foreground [&_strong]:font-semibold
+                        [&_p]:mb-2 [&_p:last-child]:mb-0
+                        [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_code]:text-xs"
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }}
+                    />
+                  ) : (
+                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                  )}
+>>>>>>> fab2c02 (Few functional changes done)
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
+
+          {/* Thinking indicator */}
+          {isLoading && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide mr-2">VoxScholar AI</span>
+                <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Input */}
