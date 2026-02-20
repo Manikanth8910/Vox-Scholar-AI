@@ -15,7 +15,9 @@ function renderMarkdown(text: string): string {
 }
 
 export default function QAPage() {
-  const [messages, setMessages] = useState<Array<{ role: string; text: string }>>([]);
+  const [messages, setMessages] = useState<
+    Array<{ role: string; text: string }>
+  >([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
@@ -32,18 +34,36 @@ export default function QAPage() {
   useEffect(() => {
     const pid = localStorage.getItem("current_paper_id");
     if (pid) {
-      api.get(`/papers/${pid}`).then(({ data }) => setPaperData(data)).catch(() => { });
-      api.get(`/chat/history?paper_id=${pid}`).then(({ data }) => {
-        const history = data.messages.map((m: any) => ({
-          role: m.role === 'user' ? 'user' : 'ai',
-          text: m.content
-        }));
-        setMessages(history.length > 0 ? history : [
-          { role: "ai", text: "Hello! I'm ready to help you analyze your paper. Ask me anything!" }
-        ]);
-      }).catch(() => { });
+      api
+        .get(`/papers/${pid}`)
+        .then(({ data }) => setPaperData(data))
+        .catch(() => {});
+      api
+        .get(`/chat/history?paper_id=${pid}`)
+        .then(({ data }) => {
+          const history = data.messages.map((m: any) => ({
+            role: m.role === "user" ? "user" : "ai",
+            text: m.content,
+          }));
+          setMessages(
+            history.length > 0
+              ? history
+              : [
+                  {
+                    role: "ai",
+                    text: "Hello! I'm ready to help you analyze your paper. Ask me anything!",
+                  },
+                ],
+          );
+        })
+        .catch(() => {});
     } else {
-      setMessages([{ role: "ai", text: "Hello! Upload a research paper first, then ask me anything about it." }]);
+      setMessages([
+        {
+          role: "ai",
+          text: "Hello! Upload a research paper first, then ask me anything about it.",
+        },
+      ]);
     }
   }, []);
 
@@ -58,28 +78,31 @@ export default function QAPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) throw new Error("You must be logged in to chat.");
 
       const chatHistory = messages
-        .filter(m => !m.text.startsWith("Hello!"))
-        .map(m => ({
+        .filter((m) => !m.text.startsWith("Hello!"))
+        .map((m) => ({
           role: m.role === "ai" ? "assistant" : "user",
-          content: m.text
+          content: m.text,
         }));
 
       const data = await api.post(`/chat`, {
         paper_id: paperId || 1,
         message: userMessage,
-        chat_history: chatHistory
+        chat_history: chatHistory,
       });
 
-      setMessages(prev => [...prev, { role: "ai", text: data.data.message }]);
+      setMessages((prev) => [...prev, { role: "ai", text: data.data.message }]);
     } catch (err: any) {
       console.error("Chat error:", err);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { role: "ai", text: `Error: ${err.message}. Please try refreshing or ensuring the paper is fully processed.` }
+        {
+          role: "ai",
+          text: `Error: ${err.message}. Please try refreshing or ensuring the paper is fully processed.`,
+        },
       ]);
     } finally {
       setLoading(false);
@@ -103,7 +126,10 @@ export default function QAPage() {
         </motion.div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 scrollbar-thin pr-1">
+        <div
+          ref={scrollRef}
+          className="flex-1 overflow-y-auto space-y-4 mb-4 scrollbar-thin pr-1"
+        >
           <AnimatePresence>
             {messages.map((msg, i) => (
               <motion.div
@@ -114,10 +140,11 @@ export default function QAPage() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[82%] rounded-2xl px-4 py-3 ${msg.role === "user"
-                    ? "bg-gradient-primary text-white rounded-br-sm"
-                    : "bg-card border border-border text-foreground rounded-bl-sm"
-                    }`}
+                  className={`max-w-[82%] rounded-2xl px-4 py-3 ${
+                    msg.role === "user"
+                      ? "bg-gradient-primary text-white rounded-br-sm"
+                      : "bg-card border border-border text-foreground rounded-bl-sm"
+                  }`}
                 >
                   {msg.role === "ai" && (
                     <div className="flex items-center justify-between mb-2 border-b border-border pb-1">
@@ -127,7 +154,9 @@ export default function QAPage() {
                       <button
                         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                         onClick={() => {
-                          const utterance = new SpeechSynthesisUtterance(msg.text);
+                          const utterance = new SpeechSynthesisUtterance(
+                            msg.text,
+                          );
                           window.speechSynthesis.speak(utterance);
                         }}
                       >
@@ -146,7 +175,9 @@ export default function QAPage() {
                         [&_strong]:text-foreground [&_strong]:font-semibold
                         [&_p]:mb-2 [&_p:last-child]:mb-0
                         [&_code]:bg-muted [&_code]:px-1 [&_code]:rounded [&_code]:text-xs"
-                      dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.text) }}
+                      dangerouslySetInnerHTML={{
+                        __html: renderMarkdown(msg.text),
+                      }}
                     />
                   ) : (
                     <p className="text-sm leading-relaxed">{msg.text}</p>
@@ -164,7 +195,9 @@ export default function QAPage() {
               className="flex justify-start"
             >
               <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-2">
-                <span className="text-xs font-semibold text-primary uppercase tracking-wide mr-2">VoxScholar AI</span>
+                <span className="text-xs font-semibold text-primary uppercase tracking-wide mr-2">
+                  VoxScholar AI
+                </span>
                 <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
                 <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
                 <span className="w-2 h-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
@@ -191,7 +224,11 @@ export default function QAPage() {
             whileTap={{ scale: 0.93 }}
             className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Send className="w-5 h-5 text-white" />}
+            {loading ? (
+              <Loader2 className="w-5 h-5 text-white animate-spin" />
+            ) : (
+              <Send className="w-5 h-5 text-white" />
+            )}
           </motion.button>
         </div>
       </div>

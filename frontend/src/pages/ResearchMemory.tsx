@@ -4,7 +4,7 @@ import { FileText, Calendar, TrendingUp, Info, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = API_URL;
 
 export default function ResearchMemory() {
   const [papers, setPapers] = useState<any[]>([]);
@@ -12,18 +12,18 @@ export default function ResearchMemory() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) return;
 
     fetch(`${API_URL}/papers`, {
-      headers: { "Authorization": `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     })
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setPapers(data);
         setLoading(false);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
         setLoading(false);
       });
@@ -41,12 +41,26 @@ export default function ResearchMemory() {
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Total Papers", value: papers.length },
-            { label: "Topics Analyzed", value: Array.from(new Set(papers.flatMap(p => p.topics || []))).length },
-            { label: "Completion Rate", value: papers.length > 0 ? `${Math.round(papers.reduce((acc, p) => acc + (p.reading_progress || 0), 0) / papers.length)}%` : "0%" },
+            {
+              label: "Topics Analyzed",
+              value: Array.from(new Set(papers.flatMap((p) => p.topics || [])))
+                .length,
+            },
+            {
+              label: "Completion Rate",
+              value:
+                papers.length > 0
+                  ? `${Math.round(papers.reduce((acc, p) => acc + (p.reading_progress || 0), 0) / papers.length)}%`
+                  : "0%",
+            },
           ].map((s) => (
             <div key={s.label} className="card-premium p-4 text-center">
-              <div className="font-display text-3xl font-bold text-foreground">{s.value}</div>
-              <div className="text-muted-foreground text-sm mt-1">{s.label}</div>
+              <div className="font-display text-3xl font-bold text-foreground">
+                {s.value}
+              </div>
+              <div className="text-muted-foreground text-sm mt-1">
+                {s.label}
+              </div>
             </div>
           ))}
         </div>
@@ -59,7 +73,8 @@ export default function ResearchMemory() {
         >
           <Info className="w-5 h-5 text-accent shrink-0" />
           <span className="text-sm text-foreground">
-            <strong>Intelligent Library:</strong> All your research is stored securely and indexed for semantic searching.
+            <strong>Intelligent Library:</strong> All your research is stored
+            securely and indexed for semantic searching.
           </span>
         </motion.div>
 
@@ -70,7 +85,10 @@ export default function ResearchMemory() {
           </div>
         ) : papers.length === 0 ? (
           <div className="text-center py-20 bg-muted/20 rounded-3xl border-2 border-dashed border-border">
-            <p className="text-muted-foreground italic">Your knowledge base is empty. Upload a paper to start building your research memory.</p>
+            <p className="text-muted-foreground italic">
+              Your knowledge base is empty. Upload a paper to start building
+              your research memory.
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -88,18 +106,26 @@ export default function ResearchMemory() {
                     <FileText className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-display font-semibold text-foreground mb-1 truncate">{paper.title}</h4>
+                    <h4 className="font-display font-semibold text-foreground mb-1 truncate">
+                      {paper.title}
+                    </h4>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> {new Date(paper.created_at).toLocaleDateString()}
+                        <Calendar className="w-3 h-3" />{" "}
+                        {new Date(paper.created_at).toLocaleDateString()}
                       </span>
                       {paper.authors && (
-                        <span className="truncate max-w-[200px]">By {paper.authors}</span>
+                        <span className="truncate max-w-[200px]">
+                          By {paper.authors}
+                        </span>
                       )}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {(paper.topics || []).slice(0, 5).map((tag: string) => (
-                        <span key={tag} className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs">
+                        <span
+                          key={tag}
+                          className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs"
+                        >
                           {tag}
                         </span>
                       ))}
@@ -109,9 +135,17 @@ export default function ResearchMemory() {
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                       <TrendingUp className="w-3 h-3" /> Progress
                     </div>
-                    <div className="font-display text-2xl font-bold" style={{
-                      color: (paper.reading_progress || 0) > 80 ? "hsl(var(--primary))" : (paper.reading_progress || 0) > 40 ? "hsl(var(--gold))" : "hsl(var(--muted-foreground))"
-                    }}>
+                    <div
+                      className="font-display text-2xl font-bold"
+                      style={{
+                        color:
+                          (paper.reading_progress || 0) > 80
+                            ? "hsl(var(--primary))"
+                            : (paper.reading_progress || 0) > 40
+                              ? "hsl(var(--gold))"
+                              : "hsl(var(--muted-foreground))",
+                      }}
+                    >
                       {paper.reading_progress || 0}%
                     </div>
                   </div>

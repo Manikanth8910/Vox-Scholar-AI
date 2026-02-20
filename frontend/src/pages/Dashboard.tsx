@@ -1,10 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Upload, Headphones, MessageSquare, Brain, FileText, Clock, Loader2 } from "lucide-react";
+import {
+  Upload,
+  Headphones,
+  MessageSquare,
+  Brain,
+  FileText,
+  Clock,
+  Loader2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
-const API_URL = "http://localhost:8000/api";
+const API_URL = API_URL;
 
 export default function Dashboard() {
   const [papers, setPapers] = useState<any[]>([]);
@@ -12,14 +20,14 @@ export default function Dashboard() {
     papersCount: 0,
     podcastsCount: 0,
     chatCount: 0,
-    notesCount: 0
+    notesCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const userName = localStorage.getItem("userName") || "Researcher";
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
@@ -27,7 +35,7 @@ export default function Dashboard() {
 
     const fetchData = async () => {
       try {
-        const headers = { "Authorization": `Bearer ${token}` };
+        const headers = { Authorization: `Bearer ${token}` };
 
         // Fetch Papers
         const papersRes = await fetch(`${API_URL}/papers`, { headers });
@@ -42,8 +50,16 @@ export default function Dashboard() {
         setStats({
           papersCount: papersData.length,
           podcastsCount: podcastsData.length,
-          chatCount: papersData.reduce((acc: number, p: any) => acc + (p.chat_messages?.length || 0), 0) + 12,
-          notesCount: papersData.reduce((acc: number, p: any) => acc + (p.notes?.length || 0), 0) + 5
+          chatCount:
+            papersData.reduce(
+              (acc: number, p: any) => acc + (p.chat_messages?.length || 0),
+              0,
+            ) + 12,
+          notesCount:
+            papersData.reduce(
+              (acc: number, p: any) => acc + (p.notes?.length || 0),
+              0,
+            ) + 5,
         });
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -56,10 +72,34 @@ export default function Dashboard() {
   }, [navigate]);
 
   const statCards = [
-    { label: "Papers Studied", value: stats.papersCount, icon: FileText, color: "text-primary", bg: "bg-primary/10" },
-    { label: "Podcasts Generated", value: stats.podcastsCount, icon: Headphones, color: "text-gold", bg: "bg-gold/10" },
-    { label: "Questions Asked", value: stats.chatCount, icon: MessageSquare, color: "text-indigo-light", bg: "bg-indigo/10" },
-    { label: "Notes Created", value: stats.notesCount, icon: Brain, color: "text-accent", bg: "bg-accent/10" },
+    {
+      label: "Papers Studied",
+      value: stats.papersCount,
+      icon: FileText,
+      color: "text-primary",
+      bg: "bg-primary/10",
+    },
+    {
+      label: "Podcasts Generated",
+      value: stats.podcastsCount,
+      icon: Headphones,
+      color: "text-gold",
+      bg: "bg-gold/10",
+    },
+    {
+      label: "Questions Asked",
+      value: stats.chatCount,
+      icon: MessageSquare,
+      color: "text-indigo-light",
+      bg: "bg-indigo/10",
+    },
+    {
+      label: "Notes Created",
+      value: stats.notesCount,
+      icon: Brain,
+      color: "text-accent",
+      bg: "bg-accent/10",
+    },
   ];
 
   const handlePaperClick = (id: number) => {
@@ -105,31 +145,60 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
             >
-              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
+              <div
+                className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}
+              >
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
-              <div className="font-display text-3xl font-bold text-foreground">{stat.value}</div>
-              <div className="text-muted-foreground text-sm mt-0.5">{stat.label}</div>
+              <div className="font-display text-3xl font-bold text-foreground">
+                {stat.value}
+              </div>
+              <div className="text-muted-foreground text-sm mt-0.5">
+                {stat.label}
+              </div>
             </motion.div>
           ))}
         </div>
 
         {/* Quick actions */}
         <div>
-          <h3 className="font-display text-lg font-semibold text-foreground mb-3">Quick Actions</h3>
+          <h3 className="font-display text-lg font-semibold text-foreground mb-3">
+            Quick Actions
+          </h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: "Upload New Paper", to: "/upload", icon: Upload, primary: true },
-              { label: "Listen to Podcast", to: "/podcast", icon: Headphones, primary: false },
-              { label: "Q&A Chatbot", to: "/qa", icon: MessageSquare, primary: false },
-              { label: "Study Memory", to: "/memory", icon: Brain, primary: false },
+              {
+                label: "Upload New Paper",
+                to: "/upload",
+                icon: Upload,
+                primary: true,
+              },
+              {
+                label: "Listen to Podcast",
+                to: "/podcast",
+                icon: Headphones,
+                primary: false,
+              },
+              {
+                label: "Q&A Chatbot",
+                to: "/qa",
+                icon: MessageSquare,
+                primary: false,
+              },
+              {
+                label: "Study Memory",
+                to: "/memory",
+                icon: Brain,
+                primary: false,
+              },
             ].map((action, i) => (
               <Link key={action.to} to={action.to}>
                 <motion.button
-                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-medium text-sm transition-all ${action.primary
+                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-medium text-sm transition-all ${
+                    action.primary
                       ? "bg-gradient-primary text-white border-transparent shadow-glow hover:shadow-lg"
                       : "bg-card border-border text-foreground hover:border-primary/30 hover:shadow-glow"
-                    }`}
+                  }`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, delay: i * 0.06 }}
@@ -146,8 +215,12 @@ export default function Dashboard() {
         {/* Recent papers */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-lg font-semibold text-foreground">Recently Analyzed</h3>
-            <Link to="/memory" className="text-primary text-sm hover:underline">View Library →</Link>
+            <h3 className="font-display text-lg font-semibold text-foreground">
+              Recently Analyzed
+            </h3>
+            <Link to="/memory" className="text-primary text-sm hover:underline">
+              View Library →
+            </Link>
           </div>
 
           {loading ? (
@@ -156,7 +229,9 @@ export default function Dashboard() {
             </div>
           ) : papers.length === 0 ? (
             <div className="card-premium p-8 text-center bg-muted/20 border-dashed">
-              <p className="text-muted-foreground italic">No research papers found. Upload your first PDF to see it here!</p>
+              <p className="text-muted-foreground italic">
+                No research papers found. Upload your first PDF to see it here!
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -173,10 +248,13 @@ export default function Dashboard() {
                     <FileText className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground truncate">{paper.title}</div>
+                    <div className="font-medium text-foreground truncate">
+                      {paper.title}
+                    </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        Uploaded {new Date(paper.created_at).toLocaleDateString()}
+                        Uploaded{" "}
+                        {new Date(paper.created_at).toLocaleDateString()}
                       </span>
                       {paper.topics && paper.topics.length > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs truncate">
@@ -186,7 +264,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold text-foreground">{paper.reading_progress || 0}%</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {paper.reading_progress || 0}%
+                    </div>
                     <div className="w-16 h-1.5 bg-muted rounded-full mt-1">
                       <div
                         className="h-full bg-gradient-primary rounded-full transition-all"

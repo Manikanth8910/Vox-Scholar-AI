@@ -1,3 +1,4 @@
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Upload, FileText, CheckCircle } from "lucide-react";
@@ -21,7 +22,7 @@ export default function UploadPage() {
     setProgress(10);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) throw new Error("You must be logged in to upload papers.");
 
       // 1. Upload
@@ -30,13 +31,16 @@ export default function UploadPage() {
       formData.append("title", selectedFile.name.replace(".pdf", ""));
 
       setProgress(25);
-      const uploadResponse = await fetch("http://localhost:8000/api/papers/upload", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
+      const uploadResponse = await fetch(
+        `${API_URL}/papers/upload`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
         },
-        body: formData,
-      });
+      );
 
       if (!uploadResponse.ok) {
         const data = await uploadResponse.json();
@@ -51,12 +55,15 @@ export default function UploadPage() {
       setProcessing(true);
 
       // 2. Start Process (Background)
-      const processResponse = await fetch(`http://localhost:8000/api/papers/${paperId}/process`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${token}`
+      const processResponse = await fetch(
+        `${API_URL}/papers/${paperId}/process`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!processResponse.ok) {
         const data = await processResponse.json();
@@ -70,17 +77,20 @@ export default function UploadPage() {
 
       while (!isCompleted && attempts < maxAttempts) {
         attempts++;
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        const statusResponse = await fetch(`http://localhost:8000/api/papers/${paperId}/status`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
+        const statusResponse = await fetch(
+          `${API_URL}/papers/${paperId}/status`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
-        });
+        );
 
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
-          setProgress(50 + (statusData.progress / 2)); // Scale 0-100 to 50-100
+          setProgress(50 + statusData.progress / 2); // Scale 0-100 to 50-100
 
           if (statusData.status === "completed") {
             isCompleted = true;
@@ -93,7 +103,9 @@ export default function UploadPage() {
       }
 
       if (attempts >= maxAttempts) {
-        throw new Error("Processing timed out. Please check your Research Memory later.");
+        throw new Error(
+          "Processing timed out. Please check your Research Memory later.",
+        );
       }
     } catch (err: any) {
       setError(err.message);
@@ -134,7 +146,8 @@ export default function UploadPage() {
             Upload Your Research Paper
           </h2>
           <p className="text-muted-foreground">
-            Drag and drop a PDF to get started. VoxScholar AI will process it instantly.
+            Drag and drop a PDF to get started. VoxScholar AI will process it
+            instantly.
           </p>
           {error && (
             <div className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
@@ -148,7 +161,10 @@ export default function UploadPage() {
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${dragging
@@ -174,7 +190,9 @@ export default function UploadPage() {
                 className="flex flex-col items-center gap-3"
               >
                 <CheckCircle className="w-16 h-16 text-green-400" />
-                <div className="font-semibold text-foreground text-lg">{file.name}</div>
+                <div className="font-semibold text-foreground text-lg">
+                  {file.name}
+                </div>
                 <div className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
                   {processing ? "Processing Paper..." : "Uploading..."}
                 </div>
@@ -186,7 +204,9 @@ export default function UploadPage() {
                     transition={{ duration: 0.5 }}
                   />
                 </div>
-                <div className="text-xs text-muted-foreground mt-1">{progress}%</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {progress}%
+                </div>
               </motion.div>
             ) : (
               <motion.div
@@ -202,7 +222,9 @@ export default function UploadPage() {
                   <div className="font-display text-xl font-semibold text-foreground mb-1">
                     Drop your PDF here
                   </div>
-                  <div className="text-muted-foreground">or click to browse files</div>
+                  <div className="text-muted-foreground">
+                    or click to browse files
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="w-4 h-4" />
@@ -215,7 +237,11 @@ export default function UploadPage() {
 
         {/* Tips */}
         <div className="mt-6 grid grid-cols-3 gap-3">
-          {["Instant processing", "AI-powered insights", "Secure & private"].map((tip) => (
+          {[
+            "Instant processing",
+            "AI-powered insights",
+            "Secure & private",
+          ].map((tip) => (
             <div key={tip} className="p-3 rounded-xl bg-muted/50 text-center">
               <CheckCircle className="w-4 h-4 text-primary mx-auto mb-1" />
               <span className="text-xs text-muted-foreground">{tip}</span>
@@ -247,18 +273,25 @@ export default function UploadPage() {
                   Have you read this topic before?
                 </h3>
                 <p className="text-muted-foreground text-sm">
-                  This helps VoxScholar AI tailor the experience to your knowledge level.
+                  This helps VoxScholar AI tailor the experience to your
+                  knowledge level.
                 </p>
               </div>
               <div className="space-y-3">
                 <button
-                  onClick={() => { setShowModal(false); navigate("/podcast"); }}
+                  onClick={() => {
+                    setShowModal(false);
+                    navigate("/podcast");
+                  }}
                   className="w-full btn-primary py-3.5 text-base"
                 >
                   Yes – I have already
                 </button>
                 <button
-                  onClick={() => { setShowModal(false); navigate("/podcast"); }}
+                  onClick={() => {
+                    setShowModal(false);
+                    navigate("/podcast");
+                  }}
                   className="w-full py-3.5 rounded-xl border border-border text-foreground font-semibold hover:bg-muted transition-all text-base"
                 >
                   No – Show Summary First
