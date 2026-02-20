@@ -36,13 +36,33 @@ export default function PodcastPage() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [speedOpen, setSpeedOpen] = useState(false);
-  const [progress, setProgress] = useState(35);
-  const [activeIndex, setActiveIndex] = useState(2);
+  const [progress, setProgress] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [podcastData, setPodcastData] = useState<any>(null);
   const [selectedStyle, setSelectedStyle] = useState("educational");
+  const [availableVoices, setAvailableVoices] = useState<any[]>([]);
+  const [voiceMale, setVoiceMale] = useState("p226");
+  const [voiceFemale, setVoiceFemale] = useState("p225");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+
+  // Load available voices
+  useEffect(() => {
+    api.get('/podcasts/voices').then(({ data }) => {
+      setAvailableVoices(data);
+    }).catch(() => { });
+  }, []);
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    const el = document.getElementById(`transcript-${activeIndex}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [activeIndex]);
 
   // Auto-load the most recent podcast when page mounts
   useEffect(() => {
@@ -50,7 +70,7 @@ export default function PodcastPage() {
       .then(({ data }) => {
         const list = Array.isArray(data) ? data : data?.items ?? [];
         if (list.length > 0) {
-          const latest = list[list.length - 1];
+          const latest = list[0]; // first = most recent
           api.get(`/podcasts/${latest.id}`).then(({ data: pd }) => {
             setPodcastData(pd);
           }).catch(() => { });
@@ -67,7 +87,13 @@ export default function PodcastPage() {
     }
     setIsGenerating(true);
     try {
-      const { data } = await api.post('/podcasts/generate', { paper_id: parseInt(paperId), style: selectedStyle, speed });
+      const { data } = await api.post('/podcasts/generate', {
+        paper_id: parseInt(paperId),
+        style: selectedStyle,
+        speed,
+        voice_male: voiceMale,
+        voice_female: voiceFemale
+      });
       const pd = await api.get(`/podcasts/${data.podcast_id}`);
       setPodcastData(pd.data);
       toast({ title: "Success", description: "Podcast generated!" });
@@ -92,10 +118,50 @@ export default function PodcastPage() {
   };
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      const p = (audioRef.current.currentTime / audioRef.current.duration) * 100;
-      setProgress(p || 0);
+    if (audioRef.current && podcastData?.transcript_json) {
+      const cur = audioRef.current.currentTime;
+      const dur = audioRef.current.duration || 0;
+      setCurrentTime(cur);
+      setDuration(dur);
+      setProgress(dur > 0 ? (cur / dur) * 100 : 0);
+
+      // Find active index
+      let accumulated = 0;
+      const list = podcastData.transcript_json;
+      for (let i = 0; i < list.length; i++) {
+        const segDur = list[i].duration || 0;
+        if (cur >= accumulated && cur < accumulated + segDur + 0.4) {
+          if (activeIndex !== i) setActiveIndex(i);
+          break;
+        }
+        accumulated += segDur + 0.4;
+      }
     }
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const seekTo = ratio * (audioRef.current.duration || 0);
+    audioRef.current.currentTime = seekTo;
+  };
+
+  const skip = (secs: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = Math.max(0, Math.min(audioRef.current.currentTime + secs, audioRef.current.duration || 0));
+  };
+
+  const fmt = (s: number) => {
+    if (!s || isNaN(s)) return "0:00";
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const accumulatedTime = (index: number) => {
+    if (!podcastData?.transcript_json) return 0;
+    return podcastData.transcript_json.slice(0, index).reduce((acc: number, cur: any) => acc + (cur.duration || 0) + 0.4, 0);
   };
 
   useEffect(() => {
@@ -138,34 +204,80 @@ export default function PodcastPage() {
                     <option value="research">Research</option>
                     <option value="debate">Debate</option>
                   </select>
-                  <button onClick={handleGenerate} disabled={isGenerating} className="btn-primary text-xs py-1 px-3">
-                    {isGenerating ? "Generating..." : "Generate AI Podcast"}
+
+                  <div className="flex flex-col gap-2 p-2 bg-accent/10 rounded-lg border border-accent/20">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Speaker Voices</span>
+                    <div className="flex gap-2">
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Male Speaker</label>
+                        <select
+                          value={voiceMale}
+                          onChange={e => setVoiceMale(e.target.value)}
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {availableVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Female Speaker</label>
+                        <select
+                          value={voiceFemale}
+                          onChange={e => setVoiceFemale(e.target.value)}
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {availableVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="btn-primary w-full py-2 flex items-center justify-center gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                        Generating Your Voices...
+                      </>
+                    ) : (
+                      "Apply & Generate New Podcast"
+                    )}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar — click to seek */}
             <div className="mb-4">
-              <div className="relative h-2 bg-muted rounded-full cursor-pointer">
+              <div
+                className="relative h-2 bg-muted rounded-full cursor-pointer group"
+                onClick={handleSeek}
+              >
                 <div
-                  className="absolute left-0 top-0 h-full bg-gradient-primary rounded-full"
+                  className="absolute left-0 top-0 h-full bg-gradient-primary rounded-full transition-all"
                   style={{ width: `${progress}%` }}
                 />
                 <div
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-primary shadow-glow border-2 border-background"
+                  className="absolute top-1/2 w-4 h-4 rounded-full bg-primary shadow-glow border-2 border-background opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ left: `${progress}%`, transform: "translate(-50%, -50%)" }}
                 />
               </div>
               <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-                <span>1:28</span>
-                <span>4:12</span>
+                <span>{fmt(currentTime)}</span>
+                <span>{fmt(duration)}</span>
               </div>
             </div>
 
             {/* Controls */}
             <div className="flex items-center justify-center gap-4 mb-5">
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => skip(-10)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <SkipBack className="w-5 h-5" />
               </button>
               <span className="text-muted-foreground text-xs">10s</span>
@@ -181,7 +293,7 @@ export default function PodcastPage() {
                 )}
               </motion.button>
               <span className="text-muted-foreground text-xs">10s</span>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => skip(10)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <SkipForward className="w-5 h-5" />
               </button>
             </div>
@@ -225,7 +337,7 @@ export default function PodcastPage() {
             {podcastData?.audio_url && (
               <audio
                 ref={audioRef}
-                src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}${podcastData.audio_url}`}
+                src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:6279'}${podcastData.audio_url}`}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={() => setPlaying(false)}
                 className="hidden"
@@ -256,21 +368,29 @@ export default function PodcastPage() {
               return (
                 <motion.div
                   key={i}
-                  onClick={() => setActiveIndex(i)}
-                  className={`p-3 rounded-xl cursor-pointer transition-all ${entry.speaker === "A" ? "speaker-a" : "speaker-b"
-                    } ${isActive ? "ring-1 ring-primary/40" : ""}`}
+                  id={`transcript-${i}`}
+                  onClick={() => {
+                    if (audioRef.current) {
+                      let time = 0;
+                      for (let j = 0; j < i; j++) time += (podcastData.transcript_json[j].duration || 0) + 0.4;
+                      audioRef.current.currentTime = time;
+                    }
+                    setActiveIndex(i);
+                  }}
+                  className={`p-4 rounded-xl cursor-pointer transition-all border-l-4 ${entry.speaker === "A" ? "speaker-a border-transparent" : "speaker-b border-transparent"
+                    } ${isActive ? (entry.speaker === "A" ? "bg-primary/10 border-primary ring-1 ring-primary/20 shadow-glow-sm" : "bg-accent/10 border-accent ring-1 ring-accent/20 shadow-glow-sm") : "opacity-60 grayscale-[0.3]"}`}
                   whileHover={{ scale: 1.01 }}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span
-                      className={`text-xs font-semibold uppercase tracking-wide ${entry.speaker === "A" ? "text-primary" : "text-accent"
+                      className={`text-xs font-bold uppercase tracking-wider ${entry.speaker === "A" ? "text-primary" : "text-accent"
                         }`}
                     >
                       {entry.name}
                     </span>
-                    <span className="text-xs text-muted-foreground">{entry.time}</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">{entry.time || fmt(accumulatedTime(i))}</span>
                   </div>
-                  <p className={`text-sm leading-relaxed ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                  <p className={`text-[13px] leading-relaxed transition-colors ${isActive ? "text-foreground font-medium" : "text-muted-foreground"}`}>
                     {entry.text}
                   </p>
                 </motion.div>

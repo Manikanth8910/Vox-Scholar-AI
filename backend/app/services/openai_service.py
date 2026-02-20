@@ -204,8 +204,9 @@ class OpenAIService:
           {{"speaker": "B", "name": "Prof. Jamie", "text": "Dialogue text", "timestamp": "0:30"}}
         ]
 
-        Make it engaging and educational. Each segment 30-60 seconds when spoken.
-        Total duration around 4-5 minutes.
+        Make it engaging, educational, and at least 15-20 dialogue exchanges long. 
+        Each turn should be 3-5 sentences to ensure depth.
+        Total duration should be around 5-8 minutes when spoken.
         """
 
         response = await self.groq_client.chat.completions.create(

@@ -29,6 +29,12 @@ AUDIO_DIR = os.path.join(settings.upload_dir, "podcasts")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 
+@router.get("/voices")
+async def get_voices():
+    """Get available voices for podcast generation."""
+    return elevenlabs_service.get_available_voices()
+
+
 @router.post("/generate", response_model=PodcastGenerationStatus)
 async def generate_podcast(
     request: PodcastGenerationRequest,
@@ -100,8 +106,8 @@ async def generate_podcast(
             speed=request.speed
         )
         
-        # Save audio file
-        audio_filename = f"podcast_{podcast.id}.mp3"
+        # Save audio file (WAV from Coqui)
+        audio_filename = f"podcast_{podcast.id}.wav"
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
         
         async with aiofiles.open(audio_path, "wb") as f:
@@ -248,7 +254,7 @@ async def get_podcast_audio(
 ):
     """Stream podcast audio — no auth required (audio tag can't send headers)."""
     # Derive file path directly from podcast ID
-    audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.mp3")
+    audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.wav")
 
     if not os.path.exists(audio_file_path):
         raise HTTPException(
@@ -265,8 +271,8 @@ async def get_podcast_audio(
     from fastapi.responses import FileResponse
     return FileResponse(
         audio_file_path,
-        media_type="audio/mpeg",
-        filename=f"podcast_{podcast_id}.mp3"
+        media_type="audio/wav",
+        filename=f"podcast_{podcast_id}.wav"
     )
 
 
