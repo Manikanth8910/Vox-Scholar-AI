@@ -37,11 +37,10 @@ async def google_auth(
 ):
     """Authenticate via Google OAuth."""
     try:
-        # If no client ID configured, skip audience verification for now
-        # in production this should strictly use settings.google_client_id
         idinfo = id_token.verify_oauth2_token(
             request.credential, 
-            requests.Request()
+            requests.Request(),
+            audience=settings.google_client_id
         )
         email = idinfo.get('email')
         name = idinfo.get('name', 'Google User')
@@ -55,16 +54,23 @@ async def google_auth(
     user = await user_crud.get_user_by_email(db, email)
     if not user:
         # Auto-create the user
-        from app.core.security import get_password_hash
         import uuid
         
         # generate random fake password
         fake_pass = str(uuid.uuid4())
         
+        # Generate username from email or name
+        username = email.split('@')[0]
+        # In case username exists, add a suffix
+        existing = await user_crud.get_user_by_username(db, username)
+        if existing:
+            username = f"{username}_{str(uuid.uuid4())[:4]}"
+
         user_data = RegisterRequest(
             email=email,
             password=fake_pass,
             full_name=name,
+            username=username
         )
         user = await user_crud.create_user(db, user_data)
         
@@ -176,6 +182,53 @@ async def get_current_user_info(
 ):
     """Get current user information."""
     return current_user
+
+
+@router.get("/profile", response_model=UserProfile)
+async def get_user_profile(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get current user profile with stats."""
+    from sqlalchemy import select, func
+    from app.models.paper import Paper
+    from app.models.podcast import Podcast
+    from app.models.note import Note, ChatMessage
+
+    # Count papers
+    papers_result = await db.execute(select(func.count(Paper.id)).where(Paper.user_id == current_user.id))
+    papers_count = papers_result.scalar() or 0
+    
+    # Count podcasts
+    podcasts_result = await db.execute(select(func.count(Podcast.id)).where(Podcast.user_id == current_user.id))
+    podcasts_count = podcasts_result.scalar() or 0
+    
+    # Count notes
+    notes_result = await db.execute(select(func.count(Note.id)).where(Note.user_id == current_user.id))
+    notes_count = notes_result.scalar() or 0
+    
+    # Count questions (chat messages from user)
+    questions_result = await db.execute(
+        select(func.count(ChatMessage.id))
+        .where(ChatMessage.user_id == current_user.id, ChatMessage.role == "user")
+    )
+    questions_count = questions_result.scalar() or 0
+
+    return UserProfile(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        username=current_user.username,
+        role=current_user.role,
+        is_active=current_user.is_active,
+        avatar_url=current_user.avatar_url,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        papers_count=papers_count,
+        podcasts_count=podcasts_count,
+        notes_count=notes_count,
+        questions_asked=questions_count
+    )
 
 
 @router.post("/logout", response_model=MessageResponse)

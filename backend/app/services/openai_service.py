@@ -164,7 +164,9 @@ class OpenAIService:
         paper_title: str,
         summary: str,
         key_findings: List[str],
-        style: str = "educational"
+        style: str = "educational",
+        voice_male_name: str = "Prabhat",
+        voice_female_name: str = "Neerja"
     ) -> List[Dict[str, Any]]:
         """Generate a podcast script with two speakers."""
 
@@ -200,9 +202,14 @@ class OpenAIService:
 
         Return ONLY a JSON array with this structure, no markdown:
         [
-          {{"speaker": "A", "name": "Dr. Alex", "text": "Dialogue text", "timestamp": "0:00"}},
-          {{"speaker": "B", "name": "Prof. Jamie", "text": "Dialogue text", "timestamp": "0:30"}}
+          {{"speaker": "A", "name": "{voice_male_name}", "text": "Dialogue text", "timestamp": "0:00"}},
+          {{"speaker": "B", "name": "{voice_female_name}", "text": "Dialogue text", "timestamp": "0:30"}}
         ]
+        
+        CRITICAL: 
+        - Speaker A MUST always have "speaker": "A"
+        - Speaker B MUST always have "speaker": "B"
+        - Do not use names in the "speaker" field.
 
         Make it engaging, educational, and at least 15-20 dialogue exchanges long. 
         Each turn should be 3-5 sentences to ensure depth.

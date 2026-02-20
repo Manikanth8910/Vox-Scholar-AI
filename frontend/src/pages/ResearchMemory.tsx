@@ -1,60 +1,26 @@
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { FileText, Calendar, Tag, Link, TrendingUp, Info } from "lucide-react";
 import { motion } from "framer-motion";
-
-const papers = [
-  {
-    id: 1,
-    title: "Attention Is All You Need",
-    date: "Feb 18, 2025",
-    tags: ["Transformers", "NLP", "Attention"],
-    similarity: 95,
-    related: "BERT",
-  },
-  {
-    id: 2,
-    title: "BERT: Pre-training of Deep Bidirectional Transformers",
-    date: "Feb 15, 2025",
-    tags: ["NLP", "Pre-training", "BERT"],
-    similarity: 88,
-    related: "Attention Is All You Need",
-  },
-  {
-    id: 3,
-    title: "Deep Residual Learning for Image Recognition",
-    date: "Feb 12, 2025",
-    tags: ["Computer Vision", "ResNet", "Deep Learning"],
-    similarity: 42,
-    related: null,
-  },
-  {
-    id: 4,
-    title: "Generative Adversarial Networks",
-    date: "Feb 8, 2025",
-    tags: ["GANs", "Generative Models"],
-    similarity: 37,
-    related: null,
-  },
-  {
-    id: 5,
-    title: "Neural Architecture Search with Reinforcement Learning",
-    date: "Feb 3, 2025",
-    tags: ["AutoML", "NAS", "RL"],
-    similarity: 60,
-    related: "Attention Is All You Need",
-  },
-];
+import { useState, useEffect } from "react";
+import api from "../lib/api";
 
 export default function ResearchMemory() {
+  const [papers, setPapers] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.get('/papers')
+      .then(({ data }) => setPapers(data))
+      .catch(() => { });
+  }, []);
   return (
     <DashboardLayout title="Research Memory">
       <div className="max-w-5xl mx-auto space-y-5">
         {/* Header stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Papers Studied", value: "24" },
-            { label: "Topics Covered", value: "11" },
-            { label: "Research Hours", value: "48h" },
+            { label: "Papers Studied", value: papers.length.toString() },
+            { label: "Topics Covered", value: "--" },
+            { label: "Research Hours", value: "--" },
           ].map((s) => (
             <div key={s.label} className="card-premium p-4 text-center">
               <div className="font-display text-3xl font-bold text-foreground">{s.value}</div>
@@ -78,7 +44,7 @@ export default function ResearchMemory() {
 
         {/* Paper list */}
         <div className="space-y-3">
-          {papers.map((paper, i) => (
+          {papers.length > 0 ? papers.map((paper, i) => (
             <motion.div
               key={paper.id}
               className="card-premium p-5"
@@ -94,36 +60,32 @@ export default function ResearchMemory() {
                   <h4 className="font-display font-semibold text-foreground mb-1">{paper.title}</h4>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {paper.date}
+                      <Calendar className="w-3 h-3" /> {new Date(paper.created_at).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {paper.tags.map((tag) => (
+                    {(paper.topics || ["Research"]).map((tag: string) => (
                       <span key={tag} className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs">
                         {tag}
                       </span>
                     ))}
                   </div>
-                  {paper.related && (
-                    <div className="mt-2 flex items-center gap-1.5 text-xs text-primary">
-                      <Link className="w-3 h-3" />
-                      Connects with: <strong>{paper.related}</strong>
-                    </div>
-                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                    <TrendingUp className="w-3 h-3" /> Similarity
+                    <TrendingUp className="w-3 h-3" /> Progress
                   </div>
-                  <div className="font-display text-2xl font-bold" style={{
-                    color: paper.similarity > 70 ? "hsl(var(--primary))" : paper.similarity > 50 ? "hsl(var(--gold))" : "hsl(var(--muted-foreground))"
-                  }}>
-                    {paper.similarity}%
+                  <div className="font-display text-2xl font-bold text-primary">
+                    {paper.reading_progress || 0}%
                   </div>
                 </div>
               </div>
             </motion.div>
-          ))}
+          )) : (
+            <div className="card-premium p-10 text-center text-muted-foreground">
+              No papers in research memory yet.
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

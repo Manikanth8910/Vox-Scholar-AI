@@ -84,7 +84,10 @@ class ElevenLabsService:
             if not text or entry.get("is_recap", False):
                 return None
             
-            voice = male_voice if speaker == "A" else female_voice
+            # Ultra-robust speaker detection
+            spk_val = str(entry.get("speaker", "A")).upper()
+            is_speaker_a = "A" in spk_val or "MALE" in spk_val
+            voice = male_voice if is_speaker_a else female_voice
             segment = await self.generate_speech(text=text, voice=voice, speed=speed)
             
             if segment:
@@ -108,8 +111,8 @@ class ElevenLabsService:
                 audio_parts.append(raw_audio)
                 total_duration += seg_dur
                 
-                # Add 1.5s silence gap
-                silence_duration = 1.5
+                # Add 1.0s silence gap
+                silence_duration = 1.0
                 audio_parts.append(b"\x00" * int(silence_duration * 22050 * 2))
                 total_duration += silence_duration
 

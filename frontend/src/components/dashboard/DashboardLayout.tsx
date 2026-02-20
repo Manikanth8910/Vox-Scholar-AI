@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import api from "../../lib/api";
 import {
   Headphones,
   LayoutDashboard,
@@ -50,15 +51,25 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
   const [modeOpen, setModeOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    api.get('/auth/me')
+      .then(({ data }) => setUser(data))
+      .catch(() => {
+        // If unauthorized, could redirect to login
+      });
+  }, []);
+
+  const userInitial = user?.full_name?.[0] || user?.username?.[0] || "?";
 
   return (
     <div className={dark ? "dark" : ""}>
       <div className="flex min-h-screen bg-background text-foreground">
         {/* Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-40 w-64 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0`}
+          className={`fixed inset-y-0 left-0 z-40 w-64 bg-sidebar border-r border-sidebar-border flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            } lg:translate-x-0`}
         >
           {/* Logo */}
           <div className="flex items-center gap-2 px-5 h-16 border-b border-sidebar-border">
@@ -79,11 +90,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   key={item.to}
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    active
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active
                       ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  }`}
+                    }`}
                 >
                   <item.icon className="w-4 h-4 shrink-0" />
                   {item.label}
@@ -155,11 +165,10 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                       <button
                         key={m}
                         onClick={() => { setMode(m); setModeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          mode === m
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${mode === m
                             ? "text-primary font-medium bg-primary/5"
                             : "text-foreground hover:bg-muted"
-                        }`}
+                          }`}
                       >
                         {m}
                       </button>
@@ -182,7 +191,7 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   onClick={() => setProfileOpen(!profileOpen)}
                   className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold text-sm shadow-glow"
                 >
-                  J
+                  {userInitial}
                 </button>
                 {profileOpen && (
                   <div className="absolute top-full mt-1 right-0 w-44 bg-card border border-border rounded-xl shadow-card py-1 z-50">

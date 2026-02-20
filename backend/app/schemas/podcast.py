@@ -43,6 +43,7 @@ class PodcastUpdate(BaseModel):
     voice_female: Optional[str] = None
     speed: Optional[float] = Field(None, ge=0.5, le=2.0)
     style: Optional[str] = None
+    last_position: Optional[float] = None
 
 
 class PodcastResponse(PodcastBase):
@@ -60,6 +61,7 @@ class PodcastResponse(PodcastBase):
     style: str
     status: str
     play_count: int
+    last_position: float
     created_at: datetime
     updated_at: datetime
     
@@ -83,6 +85,7 @@ class PodcastListResponse(BaseModel):
     audio_url: Optional[str] = None
     audio_duration: Optional[float] = None
     status: str
+    last_position: float
     created_at: datetime
     
     class Config:

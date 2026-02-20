@@ -14,6 +14,7 @@ import PodcastPage from "./pages/Podcast";
 import QAPage from "./pages/QA";
 import ResearchMemory from "./pages/ResearchMemory";
 import FlowchartPage from "./pages/Flowchart";
+import NotesPage from "./pages/Notes";
 import Profile from "./pages/Profile";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -39,7 +40,7 @@ const App = () => {
             <Route path="/qa" element={<QAPage />} />
             <Route path="/memory" element={<ResearchMemory />} />
             <Route path="/flowchart" element={<FlowchartPage />} />
-            <Route path="/notes" element={<PodcastPage />} />
+            <Route path="/notes" element={<NotesPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />

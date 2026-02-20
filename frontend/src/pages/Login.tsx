@@ -23,6 +23,7 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', data.access_token);
+      localStorage.removeItem('current_paper_id'); // Clear stale paper on fresh login
       toast({ title: "Success", description: "Logged in successfully" });
       navigate("/dashboard");
     } catch (error: any) {
@@ -41,6 +42,7 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/google', { credential: credentialResponse.credential });
       localStorage.setItem('token', data.access_token);
+      localStorage.removeItem('current_paper_id');
       toast({ title: "Success", description: "Logged in via Google" });
       navigate("/dashboard");
     } catch (error: any) {

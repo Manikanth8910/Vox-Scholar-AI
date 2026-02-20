@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Upload, FileText, CheckCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
@@ -31,11 +31,14 @@ export default function UploadPage() {
 
       toast({ title: 'Success', description: 'Paper uploaded fully!' });
       localStorage.setItem('current_paper_id', data.paper_id.toString());
-      setTimeout(() => setShowModal(true), 500);
+
+      setUploading(false);
+      setTimeout(() => {
+        navigate("/podcast");
+      }, 1500);
     } catch (error: any) {
       toast({ title: 'Error', description: error.response?.data?.detail || 'Upload failed', variant: 'destructive' });
       setFile(null);
-    } finally {
       setUploading(false);
     }
   };
@@ -81,10 +84,10 @@ export default function UploadPage() {
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${dragging
-              ? "border-primary bg-primary/5 shadow-glow scale-[1.02]"
-              : file
-                ? "border-green-400/50 bg-green-400/5"
-                : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
+            ? "border-primary bg-primary/5 shadow-glow scale-[1.02]"
+            : file
+              ? "border-green-400/50 bg-green-400/5"
+              : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
             }`}
         >
           <input
@@ -102,16 +105,20 @@ export default function UploadPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-3"
               >
-                <CheckCircle className="w-16 h-16 text-green-400" />
+                {uploading ? (
+                  <Loader2 className="w-16 h-16 text-primary animate-spin" />
+                ) : (
+                  <CheckCircle className="w-16 h-16 text-green-400" />
+                )}
                 <div className="font-semibold text-foreground text-lg">{file.name}</div>
                 <div className="text-muted-foreground text-sm">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB — {uploading ? "Processing using AI..." : "Ready"}
+                  {(file.size / 1024 / 1024).toFixed(2)} MB — {uploading ? "Processing using AI..." : "Successfully Submitted!"}
                 </div>
                 <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-2">
                   <motion.div
                     className="h-full bg-gradient-primary rounded-full"
                     initial={{ width: "0%" }}
-                    animate={{ width: "100%" }}
+                    animate={uploading ? { width: "70%" } : { width: "100%" }}
                     transition={{ duration: 0.8 }}
                   />
                 </div>

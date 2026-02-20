@@ -20,7 +20,7 @@ from app.schemas import (
 )
 from app.models.user import User
 from app.models.podcast import PodcastStatus
-from app.services import openai_service, elevenlabs_service
+from app.services import openai_service, elevenlabs_service, edge_tts_service
 
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
@@ -32,7 +32,17 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 @router.get("/voices")
 async def get_voices():
     """Get available voices for podcast generation."""
-    return elevenlabs_service.get_available_voices()
+    # Combine voices from ElevenLabs (Coqui) and Edge TTS
+    voices = edge_tts_service.get_available_voices()
+    # Add some popular ones from the other service if unique
+    other_voices = elevenlabs_service.get_available_voices()
+    
+    seen_ids = {v['id'] for v in voices}
+    for v in other_voices:
+        if v['id'] not in seen_ids:
+            voices.append(v)
+            
+    return voices
 
 
 @router.post("/generate", response_model=PodcastGenerationStatus)
@@ -66,8 +76,11 @@ async def generate_podcast(
     # If podcast already exists, delete it and regenerate fresh
     existing = await podcast_crud.get_podcast_by_paper(db, request.paper_id, current_user.id)
     if existing:
-        if existing.audio_url and os.path.exists(existing.audio_url):
-            os.remove(existing.audio_url)
+        # Delete both possible extensions
+        for ext in ["wav", "mp3"]:
+            p = os.path.join(AUDIO_DIR, f"podcast_{existing.id}.{ext}")
+            if os.path.exists(p):
+                os.remove(p)
         await podcast_crud.delete_podcast(db, existing.id)
     
     # Create podcast record
@@ -87,27 +100,54 @@ async def generate_podcast(
     await podcast_crud.update_podcast_status(db, podcast.id, PodcastStatus.GENERATING)
     
     try:
+        # Resolve names for voices
+        all_voices = edge_tts_service.get_available_voices() + elevenlabs_service.get_available_voices()
+        male_name = "Prabhat"
+        female_name = "Neerja"
+        
+        for v in all_voices:
+            if v['id'] == request.voice_male:
+                male_name = v['name'].split(' (')[0]
+            if v['id'] == request.voice_female:
+                female_name = v['name'].split(' (')[0]
+
         # Generate script
         script = await openai_service.generate_podcast_script(
             paper_title=paper.title,
             summary=paper.summary or "",
             key_findings=paper.key_findings or [],
-            style=request.style
+            style=request.style,
+            voice_male_name=male_name,
+            voice_female_name=female_name
         )
         
         if not script:
             raise Exception("Failed to generate podcast script")
         
-        # Generate audio using ElevenLabs
-        audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
-            script=script,
-            voice_male=request.voice_male,
-            voice_female=request.voice_female,
-            speed=request.speed
-        )
+        # Determine which service to use based on voice ID
+        # Edge TTS voices usually follow the en-XX-NameNeural pattern
+        is_edge_voice = "-" in request.voice_male or "-" in request.voice_female
         
-        # Save audio file (WAV from Coqui)
-        audio_filename = f"podcast_{podcast.id}.wav"
+        if is_edge_voice:
+            audio_bytes, duration = await edge_tts_service.generate_podcast_audio(
+                script=script,
+                voice_male=request.voice_male,
+                voice_female=request.voice_female,
+                speed=request.speed
+            )
+        else:
+            audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
+                script=script,
+                voice_male=request.voice_male,
+                voice_female=request.voice_female,
+                speed=request.speed
+            )
+        
+        # Save audio file
+        # Edge TTS produces MP3, Coqui produce WAV. 
+        # For consistency, we'll use .mp3 for edge and .wav for coqui, or just check extension.
+        ext = "mp3" if is_edge_voice else "wav"
+        audio_filename = f"podcast_{podcast.id}.{ext}"
         audio_path = os.path.join(AUDIO_DIR, audio_filename)
         
         async with aiofiles.open(audio_path, "wb") as f:
@@ -237,9 +277,11 @@ async def delete_podcast(
             detail="Not authorized to delete this podcast"
         )
     
-    # Delete audio file if exists
-    if podcast.audio_url and os.path.exists(podcast.audio_url):
-        os.remove(podcast.audio_url)
+    # Delete audio files if they exist
+    for ext in ["wav", "mp3"]:
+        p = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.{ext}")
+        if os.path.exists(p):
+            os.remove(p)
     
     # Delete from database
     await podcast_crud.delete_podcast(db, podcast_id)
@@ -253,8 +295,13 @@ async def get_podcast_audio(
     db: AsyncSession = Depends(get_db)
 ):
     """Stream podcast audio — no auth required (audio tag can't send headers)."""
-    # Derive file path directly from podcast ID
-    audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.wav")
+    # Try mp3 first, then wav
+    audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.mp3")
+    media_type = "audio/mpeg"
+    
+    if not os.path.exists(audio_file_path):
+        audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.wav")
+        media_type = "audio/wav"
 
     if not os.path.exists(audio_file_path):
         raise HTTPException(
@@ -271,8 +318,8 @@ async def get_podcast_audio(
     from fastapi.responses import FileResponse
     return FileResponse(
         audio_file_path,
-        media_type="audio/wav",
-        filename=f"podcast_{podcast_id}.wav"
+        media_type=media_type,
+        filename=os.path.basename(audio_file_path)
     )
 
 
