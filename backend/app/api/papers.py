@@ -318,3 +318,21 @@ async def update_reading_progress(
     paper = await paper_crud.update_reading_progress(db, paper_id, progress)
     return paper
 
+
+@router.get("/{paper_id}/flowchart")
+async def get_paper_flowchart(
+    paper_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Generate a React Flow / Mermaid compatible flowchart JSON from paper."""
+    paper = await paper_crud.get_paper(db, paper_id)
+    if not paper or paper.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Paper not found")
+        
+    if not paper.is_processed:
+        raise HTTPException(status_code=400, detail="Paper not processed")
+        
+    flowchart_nodes = await openai_service.generate_flowchart(paper.raw_text or paper.summary or "")
+    return {"nodes": flowchart_nodes, "paper_title": paper.title}
+

@@ -93,17 +93,13 @@ async def generate_podcast(
         if not script:
             raise Exception("Failed to generate podcast script")
         
-        # Generate audio (mock for now - in production would use ElevenLabs)
-        # audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
-        #     script=script,
-        #     voice_male=request.voice_male,
-        #     voice_female=request.voice_female,
-        #     speed=request.speed
-        # )
-        
-        # Mock audio generation
-        audio_bytes = b"MOCK_AUDIO_DATA"  # Placeholder
-        duration = len(script) * 30  # Rough estimate
+        # Generate audio using ElevenLabs
+        audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
+            script=script,
+            voice_male=request.voice_male,
+            voice_female=request.voice_female,
+            speed=request.speed
+        )
         
         # Save audio file
         audio_filename = f"podcast_{podcast.id}.mp3"

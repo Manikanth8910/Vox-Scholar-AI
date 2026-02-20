@@ -3,28 +3,56 @@ import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Upload, FileText, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import api from "../lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 export default function UploadPage() {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const uploadFile = async (selectedFile: File) => {
+    setFile(selectedFile);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('title', selectedFile.name.replace('.pdf', ''));
+
+      const { data } = await api.post('/papers/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      // trigger processing right away
+      await api.post(`/papers/${data.paper_id}/process`);
+
+      toast({ title: 'Success', description: 'Paper uploaded fully!' });
+      localStorage.setItem('current_paper_id', data.paper_id.toString());
+      setTimeout(() => setShowModal(true), 500);
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.response?.data?.detail || 'Upload failed', variant: 'destructive' });
+      setFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
     const dropped = e.dataTransfer.files[0];
     if (dropped?.type === "application/pdf") {
-      setFile(dropped);
-      setTimeout(() => setShowModal(true), 800);
+      uploadFile(dropped);
     }
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
-      setFile(selected);
-      setTimeout(() => setShowModal(true), 800);
+      uploadFile(selected);
     }
   };
 
@@ -52,13 +80,12 @@ export default function UploadPage() {
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
-          className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${
-            dragging
+          className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${dragging
               ? "border-primary bg-primary/5 shadow-glow scale-[1.02]"
               : file
-              ? "border-green-400/50 bg-green-400/5"
-              : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
-          }`}
+                ? "border-green-400/50 bg-green-400/5"
+                : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
+            }`}
         >
           <input
             type="file"
@@ -78,7 +105,7 @@ export default function UploadPage() {
                 <CheckCircle className="w-16 h-16 text-green-400" />
                 <div className="font-semibold text-foreground text-lg">{file.name}</div>
                 <div className="text-muted-foreground text-sm">
-                  {(file.size / 1024 / 1024).toFixed(2)} MB — Processing...
+                  {(file.size / 1024 / 1024).toFixed(2)} MB — {uploading ? "Processing using AI..." : "Ready"}
                 </div>
                 <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-2">
                   <motion.div

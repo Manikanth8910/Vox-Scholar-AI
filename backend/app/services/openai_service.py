@@ -276,6 +276,43 @@ class OpenAIService:
         
         return response.choices[0].message.content
 
+    async def generate_flowchart(self, text: str) -> List[Dict[str, str]]:
+        """Generate flowchart nodes directly from paper context."""
+        prompt = f"""You are a data structurer mapping a methodology/workflow for a complex research paper.
+        Analyze the text and output EXACTLY a JSON Array of node objects representing the progression or core ideas.
+        Return ONLY valid JSON (an array) starting with '[' and ending with ']'. No markdown, no prefixes.
+        Required structure:
+        [
+          {{ "id": "1", "label": "Short Title", "desc": "1-2 sentence description", "color": "border-primary/40 bg-primary/5", "labelColor": "text-primary" }},
+          {{ "id": "2", "label": "Another Phase", "desc": "Explanation...", "color": "border-gold/40 bg-gold/5", "labelColor": "text-gold" }}
+        ]
+
+        Text: {text[:6000]}
+        """
+        
+        response = await self.groq_client.chat.completions.create(
+            model=self.groq_model,
+            messages=[
+                {"role": "system", "content": "You output strict JSON arrays only."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.2,
+        )
+        
+        content = response.choices[0].message.content or "[]"
+        content = content.strip()
+        if content.startswith('```json'):
+            content = content[7:-3]
+        if content.startswith('```'):
+            content = content[3:-3]
+            
+        try:
+            nodes = json.loads(content.strip())
+            return nodes if isinstance(nodes, list) else []
+        except:
+            return []
+
 
 # Singleton instance
 openai_service = OpenAIService()

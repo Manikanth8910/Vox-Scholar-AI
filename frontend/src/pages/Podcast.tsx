@@ -12,6 +12,9 @@ import {
   FileText,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import api from "../lib/api";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
 
@@ -35,6 +38,57 @@ export default function PodcastPage() {
   const [speedOpen, setSpeedOpen] = useState(false);
   const [progress, setProgress] = useState(35);
   const [activeIndex, setActiveIndex] = useState(2);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [podcastData, setPodcastData] = useState<any>(null);
+  const [selectedStyle, setSelectedStyle] = useState("educational");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
+
+  const handleGenerate = async () => {
+    const paperId = localStorage.getItem("current_paper_id");
+    if (!paperId) {
+      toast({ title: "No Paper Found", description: "Upload a paper first to generate a podcast", variant: "destructive" });
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const { data } = await api.post('/podcasts/generate', { paper_id: parseInt(paperId), style: selectedStyle, speed });
+      const pd = await api.get(`/podcasts/${data.podcast_id}`);
+      setPodcastData(pd.data);
+      toast({ title: "Success", description: "Podcast generated!" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.response?.data?.detail || "Failed to generate podcast", variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const activeTranscript = podcastData?.transcript_json?.length ? podcastData.transcript_json : transcript;
+
+  const togglePlay = () => {
+    if (!audioRef.current && !podcastData?.audio_url) return;
+
+    if (playing) {
+      audioRef.current?.pause();
+      setPlaying(false);
+    } else {
+      audioRef.current?.play().catch(e => console.log(e));
+      setPlaying(true);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      const p = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+      setProgress(p || 0);
+    }
+  };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = speed;
+    }
+  }, [speed]);
 
   return (
     <DashboardLayout title="Podcast Player">
@@ -54,9 +108,26 @@ export default function PodcastPage() {
               </div>
               <div>
                 <h3 className="font-display font-semibold text-foreground leading-tight">
-                  Attention Is All You Need
+                  {podcastData?.title || "Attention Is All You Need"}
                 </h3>
-                <p className="text-muted-foreground text-sm mt-0.5">Vaswani et al. · NeurIPS 2017</p>
+                <p className="text-muted-foreground text-sm mt-0.5">{podcastData ? "AI Generated Podcast" : "Vaswani et al. · NeurIPS 2017"}</p>
+
+                <div className="flex gap-2 mt-2 items-center">
+                  <select
+                    value={selectedStyle}
+                    onChange={e => setSelectedStyle(e.target.value)}
+                    className="bg-secondary text-secondary-foreground text-xs rounded p-1"
+                  >
+                    <option value="educational">Educational</option>
+                    <option value="beginner">Beginner</option>
+                    <option value="exam">Exam</option>
+                    <option value="research">Research</option>
+                    <option value="debate">Debate</option>
+                  </select>
+                  <button onClick={handleGenerate} disabled={isGenerating} className="btn-primary text-xs py-1 px-3">
+                    {isGenerating ? "Generating..." : "Generate AI Podcast"}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -86,7 +157,7 @@ export default function PodcastPage() {
               <span className="text-muted-foreground text-xs">10s</span>
               <motion.button
                 whileTap={{ scale: 0.92 }}
-                onClick={() => setPlaying(!playing)}
+                onClick={togglePlay}
                 className="w-14 h-14 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow"
               >
                 {playing ? (
@@ -116,9 +187,8 @@ export default function PodcastPage() {
                       <button
                         key={s}
                         onClick={() => { setSpeed(s); setSpeedOpen(false); }}
-                        className={`block w-full text-left px-4 py-2 text-sm ${
-                          speed === s ? "text-primary font-semibold" : "text-foreground hover:bg-muted"
-                        }`}
+                        className={`block w-full text-left px-4 py-2 text-sm ${speed === s ? "text-primary font-semibold" : "text-foreground hover:bg-muted"
+                          }`}
                       >
                         {s}x
                       </button>
@@ -137,12 +207,22 @@ export default function PodcastPage() {
                 MP3
               </button>
             </div>
+
+            {podcastData?.audio_url && (
+              <audio
+                ref={audioRef}
+                src={`http://localhost:8000${podcastData.audio_url}`}
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => setPlaying(false)}
+                className="hidden"
+              />
+            )}
           </motion.div>
 
           {/* Transcript */}
           <div className="card-premium p-5 max-h-[420px] overflow-y-auto space-y-3">
             <h4 className="font-display font-semibold text-foreground mb-4">Transcript</h4>
-            {transcript.map((entry, i) => {
+            {activeTranscript.map((entry: any, i: number) => {
               if (entry.speaker === "recap") {
                 return (
                   <div key={i} className="rounded-xl bg-gold/10 border border-gold/20 p-4">
@@ -163,16 +243,14 @@ export default function PodcastPage() {
                 <motion.div
                   key={i}
                   onClick={() => setActiveIndex(i)}
-                  className={`p-3 rounded-xl cursor-pointer transition-all ${
-                    entry.speaker === "A" ? "speaker-a" : "speaker-b"
-                  } ${isActive ? "ring-1 ring-primary/40" : ""}`}
+                  className={`p-3 rounded-xl cursor-pointer transition-all ${entry.speaker === "A" ? "speaker-a" : "speaker-b"
+                    } ${isActive ? "ring-1 ring-primary/40" : ""}`}
                   whileHover={{ scale: 1.01 }}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span
-                      className={`text-xs font-semibold uppercase tracking-wide ${
-                        entry.speaker === "A" ? "text-primary" : "text-accent"
-                      }`}
+                      className={`text-xs font-semibold uppercase tracking-wide ${entry.speaker === "A" ? "text-primary" : "text-accent"
+                        }`}
                     >
                       {entry.name}
                     </span>
@@ -222,11 +300,10 @@ function NotesPanel() {
         ].map((btn) => (
           <button
             key={btn.label}
-            className={`py-2 rounded-xl text-sm font-medium transition-all ${
-              btn.primary
-                ? "bg-gradient-primary text-white shadow-glow"
-                : "bg-secondary text-secondary-foreground hover:bg-accent/20 border border-border"
-            }`}
+            className={`py-2 rounded-xl text-sm font-medium transition-all ${btn.primary
+              ? "bg-gradient-primary text-white shadow-glow"
+              : "bg-secondary text-secondary-foreground hover:bg-accent/20 border border-border"
+              }`}
           >
             {btn.label}
           </button>
