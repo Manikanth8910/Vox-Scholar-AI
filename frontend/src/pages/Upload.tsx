@@ -170,7 +170,9 @@ export default function UploadPage() {
           className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${dragging
             ? "border-primary bg-primary/5 shadow-glow scale-[1.02]"
             : file
-              ? "border-border/50 bg-muted/20"
+              ? progress === 100
+                ? "border-green-400/50 bg-green-400/5"
+                : "border-border/50 bg-muted/20"
               : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
             }`}
         >
@@ -189,12 +191,16 @@ export default function UploadPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-3"
               >
-                <Loader2 className="w-16 h-16 text-muted-foreground animate-spin" />
+                {progress === 100 ? (
+                  <CheckCircle className="w-16 h-16 text-green-400" />
+                ) : (
+                  <Loader2 className="w-16 h-16 text-muted-foreground animate-spin" />
+                )}
                 <div className="font-semibold text-foreground text-lg">
                   {file.name}
                 </div>
                 <div className="text-muted-foreground text-sm uppercase tracking-wider font-semibold">
-                  {processing ? "Processing Paper..." : "Uploading..."}
+                  {progress === 100 ? "Processing Complete" : processing ? "Processing Paper..." : "Uploading..."}
                 </div>
                 <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden mt-2">
                   <motion.div
