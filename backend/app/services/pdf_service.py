@@ -5,6 +5,9 @@ import re
 from typing import Dict, Any, Optional
 import fitz  # PyMuPDF
 from pathlib import Path
+import os
+import requests
+from app.core.config import settings
 
 
 class PDFService:
@@ -16,25 +19,69 @@ class PDFService:
     
     async def extract_text(self, file_path: str) -> str:
         """Extract text from a PDF file."""
+        if settings.pdf_co_api_key:
+            return await self._extract_with_pdf_co(file_path)
+        else:
+            return self._extract_with_pymupdf(file_path)
+
+    def _extract_with_pymupdf(self, file_path: str) -> str:
         text_content = []
-        
         try:
             doc = fitz.open(file_path)
-            
             for page_num in range(len(doc)):
                 page = doc[page_num]
                 text = page.get_text()
-                
                 # Clean up the text
                 text = self._clean_text(text)
                 text_content.append(text)
-            
             doc.close()
-            
             return "\n\n".join(text_content)
-        
         except Exception as e:
             raise Exception(f"Error extracting PDF text: {str(e)}")
+
+    async def _extract_with_pdf_co(self, file_path: str) -> str:
+        """Use PDF.co to extract text from PDF."""
+        url = "https://api.pdf.co/v1/pdf/convert/to/text"
+        
+        # 1. First upload the file to PDF.co temporary storage
+        upload_url = "https://api.pdf.co/v1/file/upload/get-presigned-url"
+        headers = {"x-api-key": settings.pdf_co_api_key}
+        
+        try:
+            filename = os.path.basename(file_path)
+            res = requests.get(upload_url, headers=headers, params={"name": filename})
+            res.raise_for_status()
+            data = res.json()
+            
+            presigned_url = data["presignedUrl"]
+            file_url_pdfco = data["url"]
+
+            with open(file_path, "rb") as f:
+                requests.put(presigned_url, data=f, headers={"content-type": "application/pdf"})
+            
+            # 2. Extract Text via PDF.co
+            extract_params = {
+                "url": file_url_pdfco,
+                "name": "result.txt"
+            }
+            extract_res = requests.post(url, headers=headers, json=extract_params)
+            extract_res.raise_for_status()
+            extract_data = extract_res.json()
+            
+            if extract_data.get("error"):
+                raise Exception(extract_data.get("message"))
+                
+            # Download the result text file
+            result_url = extract_data.get("url")
+            text_res = requests.get(result_url)
+            text_res.raise_for_status()
+            
+            return self._clean_text(text_res.text)
+            
+        except Exception as e:
+            # Fallback to local
+            print(f"PDF.co exception: {e}. Falling back to PyMuPDF")
+            return self._extract_with_pymupdf(file_path)
     
     def _clean_text(self, text: str) -> str:
         """Clean extracted text."""

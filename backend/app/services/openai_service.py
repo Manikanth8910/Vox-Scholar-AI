@@ -4,6 +4,7 @@ OpenAI service for AI-powered features.
 from typing import Optional, List, Dict, Any
 import json
 from openai import AsyncOpenAI
+from groq import AsyncGroq
 
 from app.core.config import settings
 
@@ -14,6 +15,10 @@ class OpenAIService:
     def __init__(self):
         self.client = AsyncOpenAI(api_key=settings.openai_api_key)
         self.model = settings.openai_model
+        
+        # Initialize Groq client
+        self.groq_client = AsyncGroq(api_key=settings.groq_api_key)
+        self.groq_model = settings.groq_model
     
     async def generate_summary(self, text: str, max_tokens: int = 1000) -> str:
         """Generate a summary of the paper text."""
@@ -142,8 +147,9 @@ class OpenAIService:
         
         messages.append({"role": "user", "content": message})
         
-        response = await self.client.chat.completions.create(
-            model=self.model,
+        # Use Groq for faster conversational RAG!
+        response = await self.groq_client.chat.completions.create(
+            model=self.groq_model,
             messages=messages,
             max_tokens=1500,
             temperature=0.5,
@@ -167,6 +173,18 @@ class OpenAIService:
             system_prompt = """Generate a debate-style podcast script about a research paper.
             Two speakers debate the merits and limitations of the paper.
             Include: introduction, key points debate, and conclusion."""
+        elif style == "beginner":
+            system_prompt = """Generate a beginner-friendly podcast script about a research paper.
+            Two speakers explain the paper using simple analogies and everyday language. Avoid jargon.
+            Include: high-level introduction, real-world analogies for key concepts, simplified findings, and a relatable conclusion."""
+        elif style == "exam":
+            system_prompt = """Generate an exam-prep podcast script about a research paper.
+            Two speakers review the paper with a focus on memorization and testing.
+            Include: quick introduction, core definitions, critical methodologies, major testable findings, and a rapid recap/quiz at the end."""
+        elif style == "research":
+            system_prompt = """Generate a researcher-focused podcast script about a research paper.
+            Two experts critically analyze the paper's methodology, data, and broader implications.
+            Include: formal introduction, deep-dive into the methodology, statistical significance of findings, and future research directions."""
         else:
             system_prompt = """Generate an educational podcast script about a research paper.
             Two speakers discuss the paper in an engaging, easy-to-understand way.
