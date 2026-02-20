@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAudio } from "../context/AudioContext";
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
-const API_URL = API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
 export default function PodcastPage() {
   const audio = useAudio();
@@ -80,7 +80,7 @@ export default function PodcastPage() {
         .put(`/podcasts/${podcastData.id}`, {
           last_position: audio.currentTime,
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   };
 
@@ -92,7 +92,7 @@ export default function PodcastPage() {
       .then(({ data }) => {
         setAvailableVoices(data || []);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // 2. Fetch papers
     api
@@ -114,7 +114,7 @@ export default function PodcastPage() {
           setCurrentPaper(selected);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // When currentPaper changes, try to load its specific podcast
@@ -141,10 +141,10 @@ export default function PodcastPage() {
                   );
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [currentPaper]);
 
@@ -219,7 +219,7 @@ export default function PodcastPage() {
     if (podcastData?.id) {
       try {
         await api.put(`/podcasts/${podcastData.id}`, { last_position: pos });
-      } catch {}
+      } catch { }
     }
   };
 
@@ -577,17 +577,15 @@ export default function PodcastPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setActiveIndex(i)}
-                    className={`p-3 rounded-xl cursor-pointer transition-all ${
-                      entry.speaker === "A"
+                    className={`p-3 rounded-xl cursor-pointer transition-all ${entry.speaker === "A"
                         ? "bg-primary/5 hover:bg-primary/10"
                         : "bg-accent/5 hover:bg-accent/10"
-                    } ${isActive ? "ring-2 ring-primary/40 shadow-glow" : ""}`}
+                      } ${isActive ? "ring-2 ring-primary/40 shadow-glow" : ""}`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span
-                        className={`text-xs font-semibold uppercase tracking-wide ${
-                          entry.speaker === "A" ? "text-primary" : "text-accent"
-                        }`}
+                        className={`text-xs font-semibold uppercase tracking-wide ${entry.speaker === "A" ? "text-primary" : "text-accent"
+                          }`}
                       >
                         {entry.name}
                       </span>
@@ -917,11 +915,10 @@ function NotesPanel({
               setActiveTab(t);
               if (t === "summary" && !summary) fetchSummary();
             }}
-            className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
-              activeTab === t
+            className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${activeTab === t
                 ? "bg-card shadow text-foreground border border-border"
                 : "text-muted-foreground hover:text-foreground"
-            }`}
+              }`}
           >
             {t === "notes" ? "📝 AI Notes" : "🧠 AI Summary"}
           </button>
