@@ -1,7 +1,7 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { Upload, FileText, CheckCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 
@@ -170,7 +170,7 @@ export default function UploadPage() {
           className={`relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300 ${dragging
             ? "border-primary bg-primary/5 shadow-glow scale-[1.02]"
             : file
-              ? "border-green-400/50 bg-green-400/5"
+              ? "border-border/50 bg-muted/20"
               : "border-border hover:border-primary/50 hover:bg-primary/3 bg-card"
             }`}
         >
@@ -189,7 +189,7 @@ export default function UploadPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 className="flex flex-col items-center gap-3"
               >
-                <CheckCircle className="w-16 h-16 text-green-400" />
+                <Loader2 className="w-16 h-16 text-muted-foreground animate-spin" />
                 <div className="font-semibold text-foreground text-lg">
                   {file.name}
                 </div>
