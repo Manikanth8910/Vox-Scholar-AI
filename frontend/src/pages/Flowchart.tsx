@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowDown, GitBranch, Sparkles, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";

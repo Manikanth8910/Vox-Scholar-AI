@@ -37,7 +37,7 @@ import TurndownService from 'turndown';
 const turndownService = new TurndownService();
 import api from "../lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
+
 import { useAudio } from "../context/AudioContext";
 
 const speeds = [0.75, 1, 1.25, 1.5, 2];
@@ -82,19 +82,15 @@ export default function PodcastPage() {
 
   // Load available voices
   useEffect(() => {
-    const currentPaperId = localStorage.getItem('currentPaperId');
-    const token = localStorage.getItem('token');
+    // 1. Fetch available voices
+    api.get("/services/voices/edge-tts").then(({ data }) => {
+      setAvailableVoices(data || []);
+    }).catch(() => { });
 
-    if (currentPaperId && token) {
-      const id = parseInt(currentPaperId);
-
-      // 1. Fetch Paper
-      fetch(`${API_URL}/papers/${id}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-        .then(res => res.json())
-        .then(data => setPaperData(data))
-        .catch(err => console.error(err));
+    // 2. Fetch papers
+    api.get('/papers').then(({ data }) => {
+      const list = Array.isArray(data) ? data : data?.items ?? [];
+      setAllPapers(list);
 
       const pid = localStorage.getItem("current_paper_id");
       let selected = null;
@@ -183,7 +179,7 @@ export default function PodcastPage() {
     toast({ title: "Downloading", description: "Your mp3 is being downloaded" });
   };
 
-  const activeTranscript = podcastData?.transcript_json?.length ? podcastData.transcript_json : transcript;
+  const activeTranscript = podcastData?.transcript_json || [];
 
   const saveProgress = async (pos: number) => {
     if (podcastData?.id) {
@@ -242,138 +238,132 @@ export default function PodcastPage() {
               <div className="w-14 h-14 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0 shadow-glow">
                 <FileText className="w-7 h-7 text-white" />
               </div>
+              <div>
+                <h3 className="font-display font-semibold text-foreground leading-tight">
+                  {podcastData?.title || currentPaper?.title || "Attention Is All You Need"}
+                </h3>
+                <p className="text-muted-foreground text-sm mt-0.5">{podcastData ? "AI Generated Podcast" : currentPaper ? `Ready to generate from ${currentPaper.filename}` : "Vaswani et al. · NeurIPS 2017"}</p>
 
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0 shadow-glow">
-                  <FileText className="w-7 h-7 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-display font-semibold text-foreground leading-tight">
-                    {podcastData?.title || currentPaper?.title || "Attention Is All You Need"}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mt-0.5">{podcastData ? "AI Generated Podcast" : currentPaper ? `Ready to generate from ${currentPaper.filename}` : "Vaswani et al. · NeurIPS 2017"}</p>
+                <div className="flex gap-2 mt-2 items-center">
+                  <select
+                    value={selectedStyle}
+                    onChange={e => {
+                      const s = e.target.value;
+                      setSelectedStyle(s);
+                      // Auto-set recommended speed per mode
+                      const modeSpeed: Record<string, number> = {
+                        educational: 1.0,
+                        beginner: 0.85,
+                        exam: 0.9,
+                        research: 1.0,
+                        debate: 1.05,
+                        storytelling: 0.95,
+                        'real-life': 1.0,
+                      };
+                      setSpeed(modeSpeed[s] ?? 1.0);
+                    }}
+                    className="bg-secondary text-secondary-foreground text-xs rounded p-1"
+                  >
+                    <option value="educational">🎓 Educational</option>
+                    <option value="beginner">🌱 Beginner</option>
+                    <option value="exam">📋 Exam Prep</option>
+                    <option value="research">🔬 Research</option>
+                    <option value="debate">⚡ Debate</option>
+                    <option value="storytelling">📖 Storytelling</option>
+                    <option value="real-life">🌍 Real-Life Examples</option>
+                  </select>
 
-                  <div className="flex gap-2 mt-2 items-center">
-                    <select
-                      value={selectedStyle}
-                      onChange={e => {
-                        const s = e.target.value;
-                        setSelectedStyle(s);
-                        // Auto-set recommended speed per mode
-                        const modeSpeed: Record<string, number> = {
-                          educational: 1.0,
-                          beginner: 0.85,
-                          exam: 0.9,
-                          research: 1.0,
-                          debate: 1.05,
-                          storytelling: 0.95,
-                          'real-life': 1.0,
-                        };
-                        setSpeed(modeSpeed[s] ?? 1.0);
-                      }}
-                      className="bg-secondary text-secondary-foreground text-xs rounded p-1"
-                    >
-                      <option value="educational">🎓 Educational</option>
-                      <option value="beginner">🌱 Beginner</option>
-                      <option value="exam">📋 Exam Prep</option>
-                      <option value="research">🔬 Research</option>
-                      <option value="debate">⚡ Debate</option>
-                      <option value="storytelling">📖 Storytelling</option>
-                      <option value="real-life">🌍 Real-Life Examples</option>
-                    </select>
+                  <div className="flex flex-col gap-2 p-2 bg-accent/10 rounded-lg border border-accent/20">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Speaker Voices</span>
+                    <div className="flex gap-2">
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Male Speaker</label>
+                        <select
+                          value={voiceMale}
+                          onChange={e => setVoiceMale(e.target.value)}
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {availableVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="flex flex-col gap-2 p-2 bg-accent/10 rounded-lg border border-accent/20">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Speaker Voices</span>
-                      <div className="flex gap-2">
-                        <div className="flex flex-col gap-1 w-1/2">
-                          <label className="text-[9px] text-muted-foreground">Male Speaker</label>
-                          <select
-                            value={voiceMale}
-                            onChange={e => setVoiceMale(e.target.value)}
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          >
-                            {availableVoices.map(v => (
-                              <option key={v.id} value={v.id}>{v.name}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex flex-col gap-1 w-1/2">
-                          <label className="text-[9px] text-muted-foreground">Female Speaker</label>
-                          <select
-                            value={voiceFemale}
-                            onChange={e => setVoiceFemale(e.target.value)}
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          >
-                            {availableVoices.map(v => (
-                              <option key={v.id} value={v.id}>{v.name}</option>
-                            ))}
-                          </select>
-                        </div>
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Female Speaker</label>
+                        <select
+                          value={voiceFemale}
+                          onChange={e => setVoiceFemale(e.target.value)}
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {availableVoices.map(v => (
+                            <option key={v.id} value={v.id}>{v.name}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-
-                    {/* Custom Personas */}
-                    <div className="flex flex-col gap-2 p-2 bg-primary/5 rounded-lg border border-primary/20 mt-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-primary">🎙️ Custom Personas</span>
-                      <div className="flex gap-2">
-                        <div className="flex flex-col gap-1 w-1/2">
-                          <label className="text-[9px] text-muted-foreground">Host A Name</label>
-                          <input
-                            type="text"
-                            value={personaMaleName}
-                            onChange={e => setPersonaMaleName(e.target.value)}
-                            placeholder="e.g. Dr. Alex"
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <label className="text-[9px] text-muted-foreground mt-0.5">Personality</label>
-                          <input
-                            type="text"
-                            value={personaMaleStyle}
-                            onChange={e => setPersonaMaleStyle(e.target.value)}
-                            placeholder="e.g. sceptical professor"
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1 w-1/2">
-                          <label className="text-[9px] text-muted-foreground">Host B Name</label>
-                          <input
-                            type="text"
-                            value={personaFemaleName}
-                            onChange={e => setPersonaFemaleName(e.target.value)}
-                            placeholder="e.g. Prof. Sara"
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          />
-                          <label className="text-[9px] text-muted-foreground mt-0.5">Personality</label>
-                          <input
-                            type="text"
-                            value={personaFemaleStyle}
-                            onChange={e => setPersonaFemaleStyle(e.target.value)}
-                            placeholder="e.g. enthusiastic student"
-                            className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-[9px] text-muted-foreground italic">Leave blank to use default names from selected voice</p>
-                    </div>
-
-                    <button
-                      onClick={handleGenerate}
-                      disabled={isGenerating}
-                      className="btn-primary w-full py-2 flex items-center justify-center gap-2"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
-                          Generating Your Voices...
-                        </>
-                      ) : podcastData?.audio_url ? (
-                        "Generate New Podcast"
-                      ) : (
-                        "Generate Podcast"
-                      )}
-                    </button>
                   </div>
+
+                  {/* Custom Personas */}
+                  <div className="flex flex-col gap-2 p-2 bg-primary/5 rounded-lg border border-primary/20 mt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">🎙️ Custom Personas</span>
+                    <div className="flex gap-2">
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Host A Name</label>
+                        <input
+                          type="text"
+                          value={personaMaleName}
+                          onChange={e => setPersonaMaleName(e.target.value)}
+                          placeholder="e.g. Dr. Alex"
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <label className="text-[9px] text-muted-foreground mt-0.5">Personality</label>
+                        <input
+                          type="text"
+                          value={personaMaleStyle}
+                          onChange={e => setPersonaMaleStyle(e.target.value)}
+                          placeholder="e.g. sceptical professor"
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 w-1/2">
+                        <label className="text-[9px] text-muted-foreground">Host B Name</label>
+                        <input
+                          type="text"
+                          value={personaFemaleName}
+                          onChange={e => setPersonaFemaleName(e.target.value)}
+                          placeholder="e.g. Prof. Sara"
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <label className="text-[9px] text-muted-foreground mt-0.5">Personality</label>
+                        <input
+                          type="text"
+                          value={personaFemaleStyle}
+                          onChange={e => setPersonaFemaleStyle(e.target.value)}
+                          placeholder="e.g. enthusiastic student"
+                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-muted-foreground italic">Leave blank to use default names from selected voice</p>
+                  </div>
+
+                  <button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="btn-primary w-full py-2 flex items-center justify-center gap-2"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                        Generating Your Voices...
+                      </>
+                    ) : podcastData?.audio_url ? (
+                      "Generate New Podcast"
+                    ) : (
+                      "Generate Podcast"
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
@@ -429,25 +419,6 @@ export default function PodcastPage() {
 
             {/* Speed + Download */}
             <div className="flex items-center justify-between">
-              <div className="relative">
-                <button
-                  onClick={generatePodcast}
-                  disabled={generating || !paperData}
-                  className="btn-primary px-8 py-3 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {generating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Generating Discussion...
-                    </>
-                  ) : "Generate Podcast"}
-                </button>
-                {generating && (
-                  <p className="text-xs text-primary mt-4 animate-pulse">
-                    This may take a minute. We are synthesizing voices...
-                  </p>
-                )}
-              </div>
               <div className="flex items-center gap-2">
                 <Volume2 className="w-4 h-4 text-muted-foreground" />
                 <input
@@ -479,13 +450,13 @@ export default function PodcastPage() {
               <h4 className="font-display font-semibold text-foreground">Podcast Transcript</h4>
               {!podcastData && <span className="text-xs text-muted-foreground">Waiting for generation...</span>}
             </div>
-            {transcript.length === 0 && !generating && !loading && (
+            {activeTranscript.length === 0 && !isGenerating && (
               <div className="text-center py-8 text-muted-foreground text-sm italic">
                 The transcript will appear here after generation.
               </div>
             )}
             <AnimatePresence>
-              {transcript.map((entry: any, i: number) => {
+              {activeTranscript.map((entry: any, i: number) => {
                 if (entry.speaker === "recap") {
                   return (
                     <motion.div
@@ -537,9 +508,9 @@ export default function PodcastPage() {
         </div>
 
         {/* Right: Notes Panel */}
-        <NotesPanel paperData={paperData} />
-      </div>
-    </DashboardLayout>
+        <NotesPanel paperId={currentPaper?.id} paperTitle={currentPaper?.title} />
+      </div >
+    </DashboardLayout >
   );
 }
 

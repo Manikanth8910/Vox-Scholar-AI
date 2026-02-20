@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Send, Volume2, Info, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,11 +20,19 @@ export default function QAPage() {
   const [loading, setLoading] = useState(false);
   const [paperId, setPaperId] = useState<number | null>(null);
   const [paperData, setPaperData] = useState<any>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   useEffect(() => {
     const pid = localStorage.getItem("current_paper_id");
     if (pid) {
-      api.get(`/papers/${pid}`).then(({ data }) => setCurrentPaper(data)).catch(() => { });
+      api.get(`/papers/${pid}`).then(({ data }) => setPaperData(data)).catch(() => { });
       api.get(`/chat/history?paper_id=${pid}`).then(({ data }) => {
         const history = data.messages.map((m: any) => ({
           role: m.role === 'user' ? 'user' : 'ai',
@@ -61,29 +68,13 @@ export default function QAPage() {
           content: m.text
         }));
 
-      const response = await fetch(`${API_URL}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          paper_id: paperId || 1,
-          message: userMessage,
-          chat_history: chatHistory
-        })
+      const data = await api.post(`/chat`, {
+        paper_id: paperId || 1,
+        message: userMessage,
+        chat_history: chatHistory
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        const errorMessage = typeof errorData.detail === 'string'
-          ? errorData.detail
-          : JSON.stringify(errorData.detail);
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      setMessages(prev => [...prev, { role: "ai", text: data.message }]);
+      setMessages(prev => [...prev, { role: "ai", text: data.data.message }]);
     } catch (err: any) {
       console.error("Chat error:", err);
       setMessages(prev => [
@@ -166,7 +157,7 @@ export default function QAPage() {
           </AnimatePresence>
 
           {/* Thinking indicator */}
-          {isLoading && (
+          {loading && (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
