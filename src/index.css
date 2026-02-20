@@ -1,96 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* === VoxScholar Light Mode === */
+    --background: 224 30% 97%;
+    --foreground: 224 45% 8%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 224 45% 8%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 224 45% 8%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 231 72% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 224 20% 92%;
+    --secondary-foreground: 224 45% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 224 20% 93%;
+    --muted-foreground: 224 15% 45%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 43 92% 58%;
+    --accent-foreground: 224 45% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 224 20% 88%;
+    --input: 224 20% 88%;
+    --ring: 231 72% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom tokens */
+    --surface: 224 25% 95%;
+    --surface-elevated: 0 0% 100%;
+    --gold: 43 92% 58%;
+    --gold-dim: 43 70% 45%;
+    --indigo: 231 72% 55%;
+    --indigo-light: 231 80% 70%;
+    --indigo-dark: 231 60% 35%;
+    --glow: 231 72% 55%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --gradient-hero: linear-gradient(135deg, hsl(224 45% 8%) 0%, hsl(231 60% 18%) 50%, hsl(260 50% 20%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(224 20% 97%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 92% 58%), hsl(35 90% 52%));
+    --gradient-primary: linear-gradient(135deg, hsl(231 72% 55%), hsl(252 70% 60%));
+    --shadow-card: 0 4px 24px -4px hsl(224 45% 8% / 0.08), 0 1px 4px hsl(224 45% 8% / 0.04);
+    --shadow-glow: 0 0 40px hsl(231 72% 55% / 0.25);
+    --shadow-gold: 0 0 30px hsl(43 92% 58% / 0.3);
 
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 224 30% 97%;
+    --sidebar-foreground: 224 45% 8%;
+    --sidebar-primary: 231 72% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 20% 92%;
+    --sidebar-accent-foreground: 224 45% 20%;
+    --sidebar-border: 224 20% 88%;
+    --sidebar-ring: 231 72% 55%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* === VoxScholar Dark Mode === */
+    --background: 224 45% 6%;
+    --foreground: 210 30% 94%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 224 38% 10%;
+    --card-foreground: 210 30% 94%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 224 38% 10%;
+    --popover-foreground: 210 30% 94%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 231 72% 62%;
+    --primary-foreground: 224 45% 6%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 224 30% 15%;
+    --secondary-foreground: 210 25% 80%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 224 30% 13%;
+    --muted-foreground: 224 15% 55%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 43 92% 58%;
+    --accent-foreground: 224 45% 6%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 210 30% 94%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --border: 224 25% 18%;
+    --input: 224 25% 16%;
+    --ring: 231 72% 62%;
+
+    /* Custom dark tokens */
+    --surface: 224 38% 10%;
+    --surface-elevated: 224 32% 13%;
+    --gold: 43 92% 58%;
+    --gold-dim: 43 70% 48%;
+    --indigo: 231 72% 62%;
+    --indigo-light: 231 80% 75%;
+    --indigo-dark: 231 60% 40%;
+    --glow: 231 72% 62%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(224 45% 4%) 0%, hsl(231 55% 12%) 50%, hsl(260 45% 14%) 100%);
+    --gradient-card: linear-gradient(135deg, hsl(224 38% 11%) 0%, hsl(224 30% 14%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 92% 58%), hsl(35 90% 52%));
+    --gradient-primary: linear-gradient(135deg, hsl(231 72% 62%), hsl(252 70% 65%));
+    --shadow-card: 0 4px 24px -4px hsl(224 45% 2% / 0.4), 0 1px 4px hsl(224 45% 2% / 0.2);
+    --shadow-glow: 0 0 60px hsl(231 72% 62% / 0.2);
+    --shadow-gold: 0 0 40px hsl(43 92% 58% / 0.25);
+
+    --sidebar-background: 224 42% 8%;
+    --sidebar-foreground: 210 30% 88%;
+    --sidebar-primary: 231 72% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 224 30% 14%;
+    --sidebar-accent-foreground: 210 25% 80%;
+    --sidebar-border: 224 25% 16%;
+    --sidebar-ring: 231 72% 62%;
   }
 }
 
@@ -101,5 +131,189 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Playfair Display', serif;
+  }
+
+  code, .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-primary {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-gold {
+    box-shadow: var(--shadow-gold);
+  }
+
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .glass-dark {
+    background: hsl(224 45% 6% / 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid hsl(231 50% 40% / 0.2);
+  }
+
+  .card-premium {
+    @apply rounded-2xl shadow-card;
+    background: var(--gradient-card);
+    border: 1px solid hsl(var(--border));
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .card-premium:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    background: var(--gradient-primary);
+    color: white;
+    @apply rounded-xl px-6 py-3 font-semibold transition-all duration-300;
+  }
+
+  .btn-primary:hover {
+    box-shadow: var(--shadow-glow);
+    transform: translateY(-1px);
+  }
+
+  .btn-gold {
+    background: var(--gradient-gold);
+    color: hsl(224 45% 8%);
+    @apply rounded-xl px-6 py-3 font-semibold transition-all duration-300;
+  }
+
+  .btn-gold:hover {
+    box-shadow: var(--shadow-gold);
+    transform: translateY(-1px);
+  }
+
+  .nav-link {
+    @apply text-muted-foreground hover:text-foreground transition-colors duration-200 font-medium;
+  }
+
+  .section-padding {
+    @apply py-24 px-6;
+  }
+
+  .container-max {
+    @apply max-w-7xl mx-auto;
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+    background: hsl(var(--card));
+    border-radius: var(--radius);
+  }
+
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: calc(var(--radius) + 1px);
+    background: var(--gradient-primary);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Pulse glow animation */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.6); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg, transparent 0%, hsl(var(--primary) / 0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  /* Transcript speaker themes */
+  .speaker-a {
+    background: linear-gradient(135deg, hsl(231 72% 55% / 0.12), hsl(231 72% 55% / 0.05));
+    border-left: 3px solid hsl(var(--primary));
+  }
+
+  .speaker-b {
+    background: linear-gradient(135deg, hsl(43 92% 58% / 0.12), hsl(43 92% 58% / 0.05));
+    border-left: 3px solid hsl(var(--accent));
   }
 }
