@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -19,31 +20,41 @@ import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/podcast" element={<PodcastPage />} />
-          <Route path="/qa" element={<QAPage />} />
-          <Route path="/memory" element={<ResearchMemory />} />
-          <Route path="/flowchart" element={<FlowchartPage />} />
-          <Route path="/notes" element={<PodcastPage />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const content = (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/upload" element={<UploadPage />} />
+            <Route path="/podcast" element={<PodcastPage />} />
+            <Route path="/qa" element={<QAPage />} />
+            <Route path="/memory" element={<ResearchMemory />} />
+            <Route path="/flowchart" element={<FlowchartPage />} />
+            <Route path="/notes" element={<PodcastPage />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+
+  if (googleClientId) {
+    return <GoogleOAuthProvider clientId={googleClientId}>{content}</GoogleOAuthProvider>;
+  }
+
+  return content;
+};
 
 export default App;

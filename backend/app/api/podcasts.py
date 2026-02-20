@@ -57,13 +57,12 @@ async def generate_podcast(
             detail="Paper must be processed before generating podcast"
         )
     
-    # Check if podcast already exists
+    # If podcast already exists, delete it and regenerate fresh
     existing = await podcast_crud.get_podcast_by_paper(db, request.paper_id, current_user.id)
     if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Podcast already exists for this paper"
-        )
+        if existing.audio_url and os.path.exists(existing.audio_url):
+            os.remove(existing.audio_url)
+        await podcast_crud.delete_podcast(db, existing.id)
     
     # Create podcast record
     podcast_data = PodcastCreate(
@@ -120,7 +119,7 @@ async def generate_podcast(
         podcast = await podcast_crud.set_podcast_audio(
             db,
             podcast.id,
-            audio_url=audio_path,
+            audio_url=audio_url,           # store the API URL (/api/podcasts/{id}/audio)
             audio_duration=duration,
             audio_size=len(audio_bytes),
             transcript=transcript_text,
@@ -245,37 +244,27 @@ async def delete_podcast(
 @router.get("/{podcast_id}/audio")
 async def get_podcast_audio(
     podcast_id: int,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Get podcast audio file."""
-    podcast = await podcast_crud.get_podcast(db, podcast_id)
-    
-    if not podcast:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Podcast not found"
-        )
-    
-    if podcast.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this podcast"
-        )
-    
-    if not podcast.audio_url or not os.path.exists(podcast.audio_url):
+    """Stream podcast audio — no auth required (audio tag can't send headers)."""
+    # Derive file path directly from podcast ID
+    audio_file_path = os.path.join(AUDIO_DIR, f"podcast_{podcast_id}.mp3")
+
+    if not os.path.exists(audio_file_path):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Audio file not found"
         )
-    
-    # Increment play count
-    await podcast_crud.increment_play_count(db, podcast_id)
-    
-    # Return file
+
+    # Best-effort play count increment
+    try:
+        await podcast_crud.increment_play_count(db, podcast_id)
+    except Exception:
+        pass
+
     from fastapi.responses import FileResponse
     return FileResponse(
-        podcast.audio_url,
+        audio_file_path,
         media_type="audio/mpeg",
         filename=f"podcast_{podcast_id}.mp3"
     )

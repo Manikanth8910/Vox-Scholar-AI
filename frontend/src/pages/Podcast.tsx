@@ -44,6 +44,21 @@ export default function PodcastPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
+  // Auto-load the most recent podcast when page mounts
+  useEffect(() => {
+    api.get('/podcasts')
+      .then(({ data }) => {
+        const list = Array.isArray(data) ? data : data?.items ?? [];
+        if (list.length > 0) {
+          const latest = list[list.length - 1];
+          api.get(`/podcasts/${latest.id}`).then(({ data: pd }) => {
+            setPodcastData(pd);
+          }).catch(() => { });
+        }
+      })
+      .catch(() => { });
+  }, []);
+
   const handleGenerate = async () => {
     const paperId = localStorage.getItem("current_paper_id");
     if (!paperId) {
@@ -66,13 +81,12 @@ export default function PodcastPage() {
   const activeTranscript = podcastData?.transcript_json?.length ? podcastData.transcript_json : transcript;
 
   const togglePlay = () => {
-    if (!audioRef.current && !podcastData?.audio_url) return;
-
+    if (!audioRef.current) return;
     if (playing) {
-      audioRef.current?.pause();
+      audioRef.current.pause();
       setPlaying(false);
     } else {
-      audioRef.current?.play().catch(e => console.log(e));
+      audioRef.current.play().catch(e => console.log(e));
       setPlaying(true);
     }
   };
@@ -211,7 +225,7 @@ export default function PodcastPage() {
             {podcastData?.audio_url && (
               <audio
                 ref={audioRef}
-                src={`http://localhost:8000${podcastData.audio_url}`}
+                src={`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'}${podcastData.audio_url}`}
                 onTimeUpdate={handleTimeUpdate}
                 onEnded={() => setPlaying(false)}
                 className="hidden"

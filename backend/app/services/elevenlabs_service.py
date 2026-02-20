@@ -1,46 +1,48 @@
 """
-ElevenLabs service for text-to-speech podcast generation.
+TTS service using Microsoft Edge TTS (free, no API key required).
+Produces high-quality MP3 audio for podcast generation.
 """
-import io
-from typing import List, Dict, Any, Optional
 import asyncio
-from elevenlabs.client import AsyncElevenLabs
+import os
+import tempfile
+from typing import List, Dict, Any, Optional
+import edge_tts
 
 from app.core.config import settings
 
 
+# High-quality Edge TTS voices
+VOICE_A = "en-US-AndrewMultilingualNeural"   # Male — deep, professional
+VOICE_B = "en-US-AvaMultilingualNeural"       # Female — warm, clear
+
+
 class ElevenLabsService:
-    """Service for ElevenLabs TTS API interactions."""
-    
+    """TTS service wrapping Edge TTS (Microsoft, free)."""
+
     def __init__(self):
-        self.client = AsyncElevenLabs(api_key=settings.elevenlabs_api_key)
-        self.default_male_voice = settings.voice_id_male
-        self.default_female_voice = settings.voice_id_female
-    
+        self.default_male_voice = VOICE_A
+        self.default_female_voice = VOICE_B
+
     async def generate_speech(
         self,
         text: str,
-        voice_id: str,
-        stability: float = 0.5,
-        similarity_boost: float = 0.8,
-        style: float = 0.3,
+        voice: str,
         speed: float = 1.0
     ) -> bytes:
-        """Generate speech from text."""
-        audio = await self.client.generate(
-            text=text,
-            voice=voice_id,
-            model="eleven_multilingual_v2",
-            stability=stability,
-            similarity_boost=similarity_boost,
-            style=style,
-            speed=speed
-        )
-        
-        # Convert generator to bytes
-        audio_bytes = b"".join([chunk for chunk in audio])
+        """Generate speech bytes from text using Edge TTS."""
+        # Edge TTS rate format: +20% or -10%
+        rate_pct = int((speed - 1.0) * 100)
+        rate_str = f"+{rate_pct}%" if rate_pct >= 0 else f"{rate_pct}%"
+
+        communicate = edge_tts.Communicate(text=text, voice=voice, rate=rate_str)
+
+        audio_bytes = b""
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_bytes += chunk["data"]
+
         return audio_bytes
-    
+
     async def generate_podcast_audio(
         self,
         script: List[Dict[str, Any]],
@@ -48,76 +50,44 @@ class ElevenLabsService:
         voice_female: Optional[str] = None,
         speed: float = 1.0
     ) -> tuple[bytes, float]:
-        """Generate podcast audio from script."""
-        
-        voice_male = voice_male or self.default_male_voice
-        voice_female = voice_female or self.default_female_voice
-        
-        audio_segments = []
+        """Generate full podcast audio from a script list."""
+
+        male_voice  = voice_male  or self.default_male_voice
+        female_voice = voice_female or self.default_female_voice
+
+        audio_segments: List[bytes] = []
         total_duration = 0.0
-        
+
         for entry in script:
             speaker = entry.get("speaker", "A")
-            text = entry.get("text", "")
-            name = entry.get("speaker_name", "Speaker")
-            
-            # Skip recap entries (they'll be handled differently)
-            if entry.get("is_recap", False):
+            text    = entry.get("text", "").strip()
+
+            if not text or entry.get("is_recap", False):
                 continue
-            
-            # Select voice based on speaker
-            voice_id = voice_male if speaker == "A" else voice_female
-            
-            if text:
-                try:
-                    audio = await self.generate_speech(
-                        text=text,
-                        voice_id=voice_id,
-                        speed=speed
-                    )
-                    audio_segments.append(audio)
-                    
-                    # Estimate duration (rough estimate: 150 words per minute at 1x speed)
-                    word_count = len(text.split())
-                    duration = (word_count / 150) / speed
-                    total_duration += duration
-                    
-                    # Small pause between segments
-                    pause_duration = int(0.5 * 44100 * 2)  # 0.5 seconds of silence
-                    audio_segments.append(b'\x00' * pause_duration)
-                    
-                except Exception as e:
-                    print(f"Error generating audio for {name}: {e}")
-                    continue
-        
-        # Combine all audio segments
+
+            voice = male_voice if speaker == "A" else female_voice
+
+            try:
+                segment = await self.generate_speech(text=text, voice=voice, speed=speed)
+                if segment:
+                    audio_segments.append(segment)
+                    # Estimate duration: ~150 wpm at 1x
+                    total_duration += (len(text.split()) / 150) / speed
+                    # 400 ms silence between speakers
+                    audio_segments.append(b"\x00" * int(0.4 * 44100 * 2))
+            except Exception as e:
+                print(f"Edge TTS error for speaker {speaker}: {e}")
+                continue
+
         final_audio = b"".join(audio_segments)
         return final_audio, total_duration
-    
-    async def generate_recap_audio(
-        self,
-        text: str,
-        voice_id: Optional[str] = None
-    ) -> bytes:
-        """Generate audio for recap sections."""
-        voice_id = voice_id or self.default_female_voice
-        
-        return await self.generate_speech(
-            text=text,
-            voice_id=voice_id,
-            stability=0.3,
-            style=0.5
-        )
-    
+
     def get_available_voices(self) -> List[Dict[str, str]]:
-        """Get list of available voices."""
-        # In production, fetch from API
         return [
-            {"id": self.default_male_voice, "name": "Male Voice"},
-            {"id": self.default_female_voice, "name": "Female Voice"},
+            {"id": self.default_male_voice,   "name": "Andrew (Male)"},
+            {"id": self.default_female_voice, "name": "Ava (Female)"},
         ]
 
 
-# Singleton instance
+# Singleton
 elevenlabs_service = ElevenLabsService()
-

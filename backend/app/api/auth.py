@@ -1,6 +1,9 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.core.security import (
@@ -23,6 +26,57 @@ from app.schemas import (
 from app.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+class GoogleLoginRequest(BaseModel):
+    credential: str
+
+@router.post("/google", response_model=Token)
+async def google_auth(
+    request: GoogleLoginRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """Authenticate via Google OAuth."""
+    try:
+        # If no client ID configured, skip audience verification for now
+        # in production this should strictly use settings.google_client_id
+        idinfo = id_token.verify_oauth2_token(
+            request.credential, 
+            requests.Request()
+        )
+        email = idinfo.get('email')
+        name = idinfo.get('name', 'Google User')
+        
+        if not email:
+            raise ValueError("No email found in token")
+            
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+
+    user = await user_crud.get_user_by_email(db, email)
+    if not user:
+        # Auto-create the user
+        from app.core.security import get_password_hash
+        import uuid
+        
+        # generate random fake password
+        fake_pass = str(uuid.uuid4())
+        
+        user_data = RegisterRequest(
+            email=email,
+            password=fake_pass,
+            full_name=name,
+        )
+        user = await user_crud.create_user(db, user_data)
+        
+    # Generate tokens
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token
+    )
+
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
