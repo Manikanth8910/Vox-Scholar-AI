@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-const API_URL = API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
 export default function Dashboard() {
   const [papers, setPapers] = useState<any[]>([]);
@@ -194,11 +194,10 @@ export default function Dashboard() {
             ].map((action, i) => (
               <Link key={action.to} to={action.to}>
                 <motion.button
-                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-medium text-sm transition-all ${
-                    action.primary
+                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-medium text-sm transition-all ${action.primary
                       ? "bg-gradient-primary text-white border-transparent shadow-glow hover:shadow-lg"
                       : "bg-card border-border text-foreground hover:border-primary/30 hover:shadow-glow"
-                  }`}
+                    }`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3, delay: i * 0.06 }}
