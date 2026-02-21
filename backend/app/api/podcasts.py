@@ -113,13 +113,21 @@ async def generate_podcast(
         if not script:
             raise Exception("Failed to generate podcast script")
         
-        # Generate audio using ElevenLabs
-        audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
-            script=script,
-            voice_male=request.voice_male,
-            voice_female=request.voice_female,
-            speed=request.speed
-        )
+        # Generate audio based on voice type
+        if request.voice_male and request.voice_male.startswith("en-"):
+            audio_bytes, duration = await edge_tts_service.generate_podcast_audio(
+                script=script,
+                voice_male=request.voice_male,
+                voice_female=request.voice_female,
+                speed=request.speed
+            )
+        else:
+            audio_bytes, duration = await elevenlabs_service.generate_podcast_audio(
+                script=script,
+                voice_male=request.voice_male,
+                voice_female=request.voice_female,
+                speed=request.speed
+            )
         
         # Upload audio to storage (Cloudinary or local)
         audio_filename = f"podcast_{podcast.id}.mp3"

@@ -141,8 +141,8 @@ export default function QAPage() {
               >
                 <div
                   className={`max-w-[82%] rounded-2xl px-4 py-3 ${msg.role === "user"
-                      ? "bg-gradient-primary text-white rounded-br-sm"
-                      : "bg-card border border-border text-foreground rounded-bl-sm"
+                    ? "bg-gradient-primary text-white rounded-br-sm"
+                    : "bg-card border border-border text-foreground rounded-bl-sm"
                     }`}
                 >
                   {msg.role === "ai" && (
@@ -150,18 +150,6 @@ export default function QAPage() {
                       <span className="text-xs font-bold text-primary uppercase tracking-tighter">
                         VoxScholar Expert Analysis
                       </span>
-                      <button
-                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
-                        onClick={() => {
-                          const utterance = new SpeechSynthesisUtterance(
-                            msg.text,
-                          );
-                          window.speechSynthesis.speak(utterance);
-                        }}
-                      >
-                        <Volume2 className="w-3 h-3" />
-                        Play
-                      </button>
                     </div>
                   )}
                   {msg.role === "ai" ? (

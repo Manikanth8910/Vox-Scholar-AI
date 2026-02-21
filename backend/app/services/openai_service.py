@@ -362,14 +362,18 @@ class OpenAIService:
         
         try:
             content = response_content.strip()
-            if content.startswith("```json"):
-                content = content[7:-3]
-            elif content.startswith("```"):
-                content = content[3:-3]
-                
-            script = json.loads(content)
-            return script if isinstance(script, list) else []
-        except:
+            
+            # Find the first '[' and last ']' to extract the JSON array robustly
+            start_idx = content.find('[')
+            end_idx = content.rfind(']')
+            
+            if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+                json_str = content[start_idx:end_idx+1]
+                script = json.loads(json_str)
+                return script if isinstance(script, list) else []
+            return []
+        except Exception as e:
+            print("ERROR PARSING JSON:", e, flush=True)
             return []
     
     async def simplify_equation(self, equation: str, context: str) -> str:
