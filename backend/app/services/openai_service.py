@@ -287,36 +287,74 @@ class OpenAIService:
         """Generate a podcast script with two speakers."""
         
         if style == "debate":
-            system_prompt = """Generate a high-energy, debate-style podcast script about a research paper.
-            Two speakers fiercely debate the merits and limitations of the paper with strong opinions.
-            Include: explosive introduction, intense back-and-forth key points debate, and a thought-provoking conclusion."""
+            system_prompt = """You are producing a high-energy, debate-style podcast script about a complex research paper.
+            CONCEPT: Two brilliant speakers fiercely debate the merits, limitations, and real-world implications of the paper. They must have strong, contrasting opinions.
+            TONE: Explosive, passionate, slightly confrontational but professionally respectful. Constant interruptions, gasped reactions, and intense back-and-forth.
+            STRUCTURE:
+            1. Explosive Introduction: Hook the listener immediately with the most controversial or shocking claim of the paper.
+            2. The Core Debate: One speaker aggressively defends the paper's findings, while the other hyper-critically attacks the methodology or data limitations.
+            3. Resolution: A thought-provoking conclusion where both speakers agree on the broader implications, even if they disagree on the specifics."""
+            
         elif style == "beginner":
-            system_prompt = """Generate an incredibly engaging, beginner-friendly podcast script about a research paper.
-            Two speakers hype up the paper using mind-blowing analogies and everyday language. Absolutely NO dense jargon without a fun explanation!
-            Include: high-energy introduction, hilarious or relatable real-world analogies, simplified findings, and a "wow" conclusion."""
+            system_prompt = """You are producing an incredibly engaging, wildly entertaining, beginner-friendly podcast script about a complex research paper.
+            CONCEPT: Two extremely energetic hosts are explaining a cutting-edge research paper to someone who has zero scientific background.
+            TONE: Hype, enthusiastic, fun, and profoundly accessible.
+            RULES:
+            - Absolutely NO dense jargon without immediately breaking it down into a hilarious or universally relatable analogy. 
+            - Use mind-blowing comparisons (e.g., comparing neural networks to a chaotic kitchen).
+            STRUCTURE:
+            1. High-Energy Hook: Start with a mind-bending question or relatable daily problem.
+            2. Concept Breakdown: Simplify the core findings using wildly imaginative metaphors.
+            3. "Wow" Conclusion: Explain how this research changes the listener's everyday life right now."""
+            
         elif style == "exam":
-            system_prompt = """Generate a fast-paced, high-stakes exam-prep podcast script about a research paper.
-            Two speakers frantically review the most critical, testable parts of the paper as if cramming for a final.
-            Include: punchy introduction, core definitions, critical methodologies, testable findings, and a rapid recap/quiz at the end."""
+            system_prompt = """You are producing a fast-paced, high-stakes exam-prep podcast script about a research paper.
+            CONCEPT: Two desperate, highly caffeinated students (or professors) are frantically reviewing the absolute most critical, testable parts of this paper the night before a huge final exam.
+            TONE: Urgent, intense, rapid-fire, and extremely focused on what "will be on the test".
+            STRUCTURE:
+            1. Punchy Hook: "Wake up! We have 5 minutes to memorize this paper before the exam!"
+            2. Core Definitions: Rapidly define the absolute most important buzzwords and methodologies.
+            3. Testable Findings: Highlight exactly what the major statistical findings were and why they matter.
+            4. Pop Quiz Recap: A chaotic but effective 30-second rapid-fire quiz at the end to cement the knowledge."""
+            
         elif style == "research":
-            system_prompt = """Generate a brilliant, deep-dive researcher-focused podcast script about a research paper.
-            Two passionate experts excitedly geek out and critically analyze the paper's methodology, data, and groundbreaking implications.
-            Include: academic but enthusiastic introduction, deep methodological critique, statistical significance, and massive future research impacts."""
+            system_prompt = """You are producing a brilliant, deep-dive researcher-focused podcast script about a research paper.
+            CONCEPT: Two passionate, highly qualified domain experts are excitedly geeking out and critically analyzing the paper at a post-doc level.
+            TONE: Academic but intensely enthusiastic, highly analytical, deeply curious. They love data.
+            STRUCTURE:
+            1. Academic Hook: Introduce the paper's placement in the current state-of-the-art literature.
+            2. Methodological Breakdown: A rigorous but passionate critique of the experimental design, sample size, or algorithms used.
+            3. Statistical Significance: Deeply analyze the P-values, confidence intervals, or performance metrics.
+            4. Future Horizons: Massive, groundbreaking future research directions this paper unlocks."""
+            
         elif style == "storytelling":
-            system_prompt = """Generate a cinematic, storytelling-style podcast script about a research paper.
-            Follow the narrative arc: Problem → Challenge → Solution → Epic Impact.
-            Two speakers tell the thrilling story of the researchers' journey.
-            Use vivid, dramatic language, suspenseful pacing, and emotional resonance.
-            Make it an unforgettable, edge-of-your-seat narrative!"""
+            system_prompt = """You are producing a cinematic, gripping, true-crime-style storytelling podcast script about a research paper.
+            CONCEPT: Two speakers narrate the thrilling story of the researchers' epic journey to discover these findings.
+            TONE: Suspenseful, dramatic, vivid, awe-inspiring, and emotionally resonant.
+            STRUCTURE:
+            1. The Problem: Establish incredibly high stakes. What was the massive mystery or crisis before this paper existed?
+            2. The Challenge: Describe the researchers hitting a wall, struggling with methodology, or facing immense academic pressure.
+            3. The Breakthrough: The explosive "Aha!" moment where the solution or finding finally crystallized.
+            4. Epic Impact: Conclude with the unforgettable, paradigm-shifting impact of this discovery on humanity."""
+            
         elif style in ("real-life", "real_life"):
-            system_prompt = """Generate an extremely relatable, real-life examples podcast script about a research paper.
-            Two speakers connect every key concept to hilarious, relatable everyday situations.
-            Use brilliant comparisons from daily life (cooking disasters, terrible traffic, messy social media, etc.) to explain science.
-            Keep it wildly practical and visual."""
+            system_prompt = """You are producing an extremely relatable, real-life examples podcast script about a research paper.
+            CONCEPT: Two speakers are laser-focused on connecting incredibly dense scientific concepts to hilarious, messy, relatable everyday situations.
+            TONE: Casual, comedic, practical, conversational, and highly visual.
+            STRUCTURE:
+            1. Relatable Hook: Open with a frustrating, common daily annoyance and promise that this paper solves it or explains it.
+            2. The Analogy Machine: For EVERY single piece of data or jargon, immediately map it to brilliant real-world comparisons (cooking disasters, terrible traffic, messy social media feeds, terrible first dates).
+            3. Practical Takeaways: How does knowing this finding actually change what the listener does tomorrow morning?"""
+            
         else:
-            system_prompt = """Generate a highly energetic, educational podcast script about a research paper.
-            Two speakers excitedly discuss the paper in an incredibly engaging, easy-to-understand way.
-            Include: fascinating introduction, background, jaw-dropping key concepts, findings, and an inspiring conclusion."""
+            system_prompt = """You are producing a highly energetic, educational masterpiece of a podcast script about a research paper.
+            CONCEPT: Two charismatic speakers excitedly break down the paper in a wildly engaging, easy-to-understand way that keeps listeners glued to their seats.
+            TONE: Fascinating, inspiring, highly interactive, and immensely educational.
+            STRUCTURE:
+            1. Explosive Hook: Grasp the listener's attention immediately with a fascinating premise.
+            2. Background: Briefly explain the context with high energy.
+            3. Jaw-Dropping Concepts: Explain the methodology and key findings with relentless enthusiasm.
+            4. Inspiring Conclusion: Leave the listener feeling smarter and deeply inspired by the progress of science."""
 
         persona_instructions = ""
         if persona_male_style or persona_female_style:
