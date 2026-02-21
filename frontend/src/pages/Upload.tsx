@@ -50,7 +50,7 @@ export default function UploadPage() {
 
       const uploadData = await uploadResponse.json();
       const paperId = uploadData.paper_id;
-      localStorage.setItem("currentPaperId", paperId.toString());
+      localStorage.setItem("current_paper_id", paperId.toString());
 
       setProgress(50);
       setProcessing(true);
@@ -144,7 +144,7 @@ export default function UploadPage() {
           className="text-center mb-8"
         >
           <h2 className="font-display text-3xl font-bold text-foreground mb-2">
-            Upload Your Research Paper
+            Upload Your Document
           </h2>
           <p className="text-muted-foreground">
             Drag and drop a PDF to get started. VoxScholar AI will process it

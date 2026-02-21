@@ -9,6 +9,8 @@ import {
   FileText,
   Clock,
   Loader2,
+  Download,
+  Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -46,7 +48,10 @@ export default function Dashboard() {
         const podcastsRes = await fetch(`${API_URL}/podcasts`, { headers });
         const podcastsData = await podcastsRes.json();
 
-        // Fetch user stats (mocking based on counts for now as there's no stats endpoint)
+        // Fetch Notes
+        const notesRes = await fetch(`${API_URL}/notes`, { headers });
+        const notesData = await notesRes.json();
+
         setStats({
           papersCount: papersData.length,
           podcastsCount: podcastsData.length,
@@ -54,12 +59,8 @@ export default function Dashboard() {
             papersData.reduce(
               (acc: number, p: any) => acc + (p.chat_messages?.length || 0),
               0,
-            ) + 12,
-          notesCount:
-            papersData.reduce(
-              (acc: number, p: any) => acc + (p.notes?.length || 0),
-              0,
-            ) + 5,
+            ),
+          notesCount: notesData.length,
         });
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -103,8 +104,27 @@ export default function Dashboard() {
   ];
 
   const handlePaperClick = (id: number) => {
-    localStorage.setItem("currentPaperId", id.toString());
+    localStorage.setItem("current_paper_id", id.toString());
     navigate("/qa");
+  };
+
+  const handleDeletePaper = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this research paper? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${API_URL}/papers/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPapers(prev => prev.filter(p => p.id !== id));
+      setStats(prev => ({ ...prev, papersCount: Math.max(0, prev.papersCount - 1) }));
+    } catch (err) {
+      console.error("Failed to delete paper:", err);
+    }
   };
 
   return (
@@ -128,7 +148,7 @@ export default function Dashboard() {
                 : "Upload your first research paper to get started with AI analysis."}
             </p>
             <Link to="/upload">
-              <button className="mt-4 px-5 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-medium text-sm transition-all border border-white/20">
+              <button className="mt-5 bg-gradient-primary text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-glow border border-white/10">
                 Upload New Paper →
               </button>
             </Link>
@@ -194,9 +214,9 @@ export default function Dashboard() {
             ].map((action, i) => (
               <Link key={action.to} to={action.to}>
                 <motion.button
-                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-medium text-sm transition-all ${action.primary
-                      ? "bg-gradient-primary text-white border-transparent shadow-glow hover:shadow-lg"
-                      : "bg-card border-border text-foreground hover:border-primary/30 hover:shadow-glow"
+                  className={`w-full h-full flex flex-col items-center gap-3 p-4 rounded-2xl border font-semibold text-sm transition-all ${action.primary
+                    ? "bg-gradient-primary text-white shadow-glow border-transparent hover:opacity-90"
+                    : "bg-card border-border text-foreground hover:border-primary/30 hover:shadow-card"
                     }`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -256,22 +276,31 @@ export default function Dashboard() {
                         {new Date(paper.created_at).toLocaleDateString()}
                       </span>
                       {paper.topics && paper.topics.length > 0 && (
-                        <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs truncate">
+                        <span className="px-2 py-0.5 rounded-full bg-gradient-primary text-white text-[10px] font-bold uppercase tracking-wider shadow-sm">
                           {paper.topics[0]}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold text-foreground">
-                      {paper.reading_progress || 0}%
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-foreground">
+                        {paper.reading_progress || 0}%
+                      </div>
+                      <div className="w-16 h-1.5 bg-muted rounded-full mt-1">
+                        <div
+                          className="h-full bg-gradient-primary rounded-full transition-all"
+                          style={{ width: `${paper.reading_progress || 0}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-16 h-1.5 bg-muted rounded-full mt-1">
-                      <div
-                        className="h-full bg-gradient-primary rounded-full transition-all"
-                        style={{ width: `${paper.reading_progress || 0}%` }}
-                      />
-                    </div>
+                    <button
+                      onClick={(e) => handleDeletePaper(e, paper.id)}
+                      className="p-1 px-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
                   </div>
                 </motion.div>
               ))}

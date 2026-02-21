@@ -35,14 +35,7 @@ const navItems = [
   { icon: BarChart3, label: "Flowchart", to: "/flowchart" },
 ];
 
-const modes = [
-  "Beginner Mode",
-  "Exam Mode",
-  "Research Mode",
-  "Debate Mode",
-  "Storytelling Mode",
-  "Real-Life Example Mode",
-];
+
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -56,8 +49,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
     // Persist dark mode across pages via localStorage
     return localStorage.getItem("theme") !== "light";
   });
-  const [mode, setMode] = useState("Research Mode");
-  const [modeOpen, setModeOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -125,11 +116,11 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                   to={item.to}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-glow"
+                    ? "bg-gradient-primary text-white shadow-glow"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     }`}
                 >
-                  <item.icon className="w-4 h-4 shrink-0" />
+                  <item.icon className={`w-4 h-4 shrink-0 ${active ? "animate-pulse" : ""}`} />
                   {item.label}
                 </Link>
               );
@@ -184,31 +175,21 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
 
             <div className="flex items-center gap-3">
               {/* Mode selector */}
-              <div className="relative hidden md:block">
-                <button
-                  onClick={() => setModeOpen(!modeOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-secondary text-secondary-foreground text-sm font-medium hover:bg-accent/20 transition-all border border-border"
+              <div className="hidden md:flex items-center gap-2 relative">
+                <select
+                  value={audio.selectedStyle}
+                  onChange={(e) => audio.setSelectedStyle(e.target.value)}
+                  className="appearance-none bg-gradient-primary border border-primary/20 text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-widest rounded-full pl-3 pr-8 py-2 outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer shadow-glow"
                 >
-                  <span className="w-2 h-2 rounded-full bg-primary" />
-                  {mode}
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-                {modeOpen && (
-                  <div className="absolute top-full mt-1 right-0 w-56 bg-card border border-border rounded-xl shadow-card py-1 z-50">
-                    {modes.map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => { setMode(m); setModeOpen(false); }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${mode === m
-                          ? "text-primary font-medium bg-primary/5"
-                          : "text-foreground hover:bg-muted"
-                          }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  <option value="educational">🎓 Educational</option>
+                  <option value="beginner">🌱 Beginner</option>
+                  <option value="exam">📋 Exam Prep</option>
+                  <option value="research">🔬 Research</option>
+                  <option value="debate">⚡ Debate</option>
+                  <option value="storytelling">📖 Storytelling</option>
+                  <option value="real-life">🌍 Real-Life</option>
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/80 pointer-events-none" />
               </div>
 
               {/* Dark mode toggle */}

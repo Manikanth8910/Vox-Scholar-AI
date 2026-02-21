@@ -102,7 +102,7 @@ function AINotesTab() {
     try {
       const { data } = await api.get("/notes");
       setNotes(data);
-    } catch {}
+    } catch { }
   };
 
   const loadFlowchart = async () => {
@@ -163,10 +163,10 @@ function AINotesTab() {
         prev.map((n) =>
           n.id === editingNote.id
             ? {
-                ...n,
-                title: editingNote.title,
-                content_preview: markdown.substring(0, 100),
-              }
+              ...n,
+              title: editingNote.title,
+              content_preview: markdown.substring(0, 100),
+            }
             : n,
         ),
       );
@@ -489,7 +489,6 @@ function AINotesTab() {
                   "strike",
                   "size",
                   "list",
-                  "bullet",
                   "color",
                   "background",
                   "link",
@@ -544,7 +543,7 @@ function AISummaryTab() {
       setPaperTitle(data.title || "");
       setSummary(
         data.summary ||
-          "No summary available yet. Try regenerating from the Upload page.",
+        "No summary available yet. Try regenerating from the Upload page.",
       );
     } catch {
       toast({
@@ -684,11 +683,10 @@ export default function NotesPage() {
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                tab === t.key
+              className={`relative px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${tab === t.key
                   ? "bg-card shadow text-foreground border border-border"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               {t.label}
               {tab === t.key && (

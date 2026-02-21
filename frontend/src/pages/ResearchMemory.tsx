@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { FileText, Calendar, TrendingUp, Info, Loader2 } from "lucide-react";
+import { FileText, Calendar, TrendingUp, Info, Loader2, Download, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import api from "../lib/api";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
@@ -30,8 +31,22 @@ export default function ResearchMemory() {
   }, []);
 
   const handleOpenPaper = (id: number) => {
-    localStorage.setItem("currentPaperId", id.toString());
+    localStorage.setItem("current_paper_id", id.toString());
     navigate("/qa");
+  };
+
+  const handleDeletePaper = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this research paper? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      await api.delete(`/papers/${id}`);
+      setPapers(prev => prev.filter(p => p.id !== id));
+    } catch (err) {
+      console.error("Failed to delete paper:", err);
+    }
   };
 
   return (
@@ -131,23 +146,32 @@ export default function ResearchMemory() {
                       ))}
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-                      <TrendingUp className="w-3 h-3" /> Progress
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1 justify-end">
+                        <TrendingUp className="w-3 h-3" /> Progress
+                      </div>
+                      <div
+                        className="font-display text-2xl font-bold"
+                        style={{
+                          color:
+                            (paper.reading_progress || 0) > 80
+                              ? "hsl(var(--primary))"
+                              : (paper.reading_progress || 0) > 40
+                                ? "hsl(var(--gold))"
+                                : "hsl(var(--muted-foreground))",
+                        }}
+                      >
+                        {paper.reading_progress || 0}%
+                      </div>
                     </div>
-                    <div
-                      className="font-display text-2xl font-bold"
-                      style={{
-                        color:
-                          (paper.reading_progress || 0) > 80
-                            ? "hsl(var(--primary))"
-                            : (paper.reading_progress || 0) > 40
-                              ? "hsl(var(--gold))"
-                              : "hsl(var(--muted-foreground))",
-                      }}
+                    <button
+                      onClick={(e) => handleDeletePaper(e, paper.id)}
+                      className="p-1 px-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                      title="Delete Paper"
                     >
-                      {paper.reading_progress || 0}%
-                    </div>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </motion.div>

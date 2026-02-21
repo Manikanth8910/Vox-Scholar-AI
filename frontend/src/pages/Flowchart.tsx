@@ -8,24 +8,42 @@ import { Loader2 } from "lucide-react";
 
 export default function FlowchartPage() {
   const [nodes, setNodes] = useState<any[]>([]);
+  const [allPapers, setAllPapers] = useState<any[]>([]);
+  const [selectedPaperId, setSelectedPaperId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [generated, setGenerated] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Load all papers for the dropdown
+    api.get("/papers").then(({ data }) => {
+      const list = Array.isArray(data) ? data : (data?.items ?? []);
+      setAllPapers(list);
+
+      const pid = localStorage.getItem("current_paper_id");
+      if (pid) {
+        setSelectedPaperId(parseInt(pid));
+      } else if (list.length > 0) {
+        setSelectedPaperId(list[0].id);
+        localStorage.setItem("current_paper_id", list[0].id.toString());
+      }
+    }).catch(() => { });
+  }, []);
+
   const generate = async () => {
-    const paperId = localStorage.getItem("current_paper_id");
-    if (!paperId) {
+    if (!selectedPaperId) {
       toast({
-        title: "No Paper Found",
-        description: "Please upload a paper first.",
+        title: "No Paper Selected",
+        description: "Please select a paper from the list above.",
         variant: "destructive",
       });
       return;
     }
+
     setLoading(true);
     try {
-      const { data } = await api.get(`/papers/${paperId}/flowchart`);
+      const { data } = await api.get(`/papers/${selectedPaperId}/flowchart`);
       setNodes(data.nodes || []);
       setTitle(data.paper_title || "");
       setGenerated(true);
@@ -41,44 +59,79 @@ export default function FlowchartPage() {
     }
   };
 
+  const handlePaperChange = (id: number) => {
+    setSelectedPaperId(id);
+    localStorage.setItem("current_paper_id", id.toString());
+    // Reset state when changing paper context
+    setNodes([]);
+    setGenerated(false);
+    setTitle("");
+  };
+
   return (
     <DashboardLayout title="Research Flowchart">
       <div className="max-w-2xl mx-auto py-4 space-y-6">
         {/* Header */}
         <motion.div
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          className="card-premium p-6 flex flex-col gap-5"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <div>
-            <h2 className="font-display text-2xl font-bold text-foreground">
-              {title || "Research Flowchart"}
-            </h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              AI-generated step-by-step methodology overview
-            </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                {title || "Research Flowchart"}
+              </h2>
+              <p className="text-muted-foreground text-sm mt-1">
+                AI methodology overview
+              </p>
+            </div>
+            <button
+              onClick={generate}
+              disabled={loading || !selectedPaperId}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all
+                bg-gradient-primary text-white shadow-glow disabled:opacity-50 hover:shadow-lg hover:scale-[1.02] active:scale-100"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Generating…
+                </>
+              ) : generated ? (
+                <>
+                  <RefreshCw className="w-4 h-4" /> Regenerate
+                </>
+              ) : (
+                <>
+                  <GitBranch className="w-4 h-4" /> Build Flowchart
+                </>
+              )}
+            </button>
           </div>
 
-          <button
-            onClick={generate}
-            disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all
-              bg-gradient-primary text-white shadow-glow disabled:opacity-60 hover:shadow-lg hover:scale-[1.02] active:scale-100"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Generating…
-              </>
-            ) : generated ? (
-              <>
-                <RefreshCw className="w-4 h-4" /> Regenerate
-              </>
-            ) : (
-              <>
-                <GitBranch className="w-4 h-4" /> Generate Flowchart
-              </>
-            )}
-          </button>
+          <div className="pt-4 border-t border-border flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+              Select Paper to Analyze
+            </label>
+            <div className="relative">
+              <select
+                value={selectedPaperId || ""}
+                onChange={(e) => handlePaperChange(parseInt(e.target.value))}
+                className="w-full appearance-none bg-background border border-border hover:border-primary/50 text-sm font-semibold text-foreground rounded-xl py-3 pl-4 pr-10 outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary/20 truncate"
+              >
+                {allPapers.length === 0 && (
+                  <option value="">No papers available</option>
+                )}
+                {allPapers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <ArrowDown className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
         </motion.div>
 
         {/* Content */}

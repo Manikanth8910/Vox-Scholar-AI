@@ -20,6 +20,8 @@ import {
   Loader2,
   ExternalLink,
   BookOpen,
+  CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -43,24 +45,45 @@ import { useAudio } from "../context/AudioContext";
 const speeds = [0.75, 1, 1.25, 1.5, 2];
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
+/** Renders text with **bold** markers as visually highlighted emphasis spans */
+const renderEmphasizedText = (text: string) => {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 0
+      ? part
+      : (
+        <mark
+          key={i}
+          className="bg-primary/20 text-primary font-bold rounded px-0.5 not-italic"
+          title="🔊 Emphasized in audio"
+        >
+          {part}
+        </mark>
+      )
+  );
+};
+
 export default function PodcastPage() {
   const audio = useAudio();
-  const [speed, setSpeed] = useState(1);
-  const [speedOpen, setSpeedOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [podcastData, setPodcastData] = useState<any>(null);
-  const [selectedStyle, setSelectedStyle] = useState("educational");
+  const selectedStyle = audio.selectedStyle;
+  const speed = audio.speed;
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const [currentPaper, setCurrentPaper] = useState<any>(null);
   const [allPapers, setAllPapers] = useState<any[]>([]);
   const [voiceMale, setVoiceMale] = useState("en-IN-PrabhatNeural");
   const [voiceFemale, setVoiceFemale] = useState("en-IN-NeerjaNeural");
-  const [personaMaleName, setPersonaMaleName] = useState("");
-  const [personaFemaleName, setPersonaFemaleName] = useState("");
-  const [personaMaleStyle, setPersonaMaleStyle] = useState("");
-  const [personaFemaleStyle, setPersonaFemaleStyle] = useState("");
   const { toast } = useToast();
+
+  // Derived properties moved to top to avoid reference errors
+  const activeTranscript = podcastData?.transcript_json || [];
+  const isSettingsStale = podcastData && (
+    podcastData.style !== selectedStyle ||
+    podcastData.voice_male !== voiceMale ||
+    podcastData.voice_female !== voiceFemale
+  );
 
   // Convenience aliases from global audio context
   const playing = audio.playing;
@@ -70,8 +93,8 @@ export default function PodcastPage() {
   const duration = audio.duration;
   const progress = audio.progress;
   const audioRef = audio.audioRef;
-
   const skip = audio.skip;
+
   const togglePlay = () => {
     if (!audio.audioSrc) return;
     audio.togglePlay();
@@ -84,112 +107,57 @@ export default function PodcastPage() {
     }
   };
 
-  // Load available voices
+  // Load available voices and papers
   useEffect(() => {
-    // 1. Fetch available voices
-    api
-      .get("/services/voices/edge-tts")
-      .then(({ data }) => {
-        const allowedVoices = [
-          "en-IN-NeerjaNeural",
-          "en-IN-PrabhatNeural",
-          "en-IN-PriyaNeural",
-          "en-IN-RaviNeural",
-        ];
-        const allVoices = data || [];
-        const filtered = allVoices.filter((v: any) => allowedVoices.includes(v.id));
-        setAvailableVoices(filtered);
-      })
-      .catch(() => { });
+    api.get("/services/voices/edge-tts").then(({ data }) => {
+      const allowedVoices = ["en-IN-NeerjaNeural", "en-IN-PrabhatNeural", "en-IN-PriyaNeural", "en-IN-RaviNeural"];
+      setAvailableVoices((data || []).filter((v: any) => allowedVoices.includes(v.id)));
+    }).catch(() => { });
 
-    // 2. Fetch papers
-    api
-      .get("/papers")
-      .then(({ data }) => {
-        const list = Array.isArray(data) ? data : (data?.items ?? []);
-        setAllPapers(list);
-
-        const pid = localStorage.getItem("current_paper_id");
-        let selected = null;
-        if (pid) {
-          selected = list.find((p: any) => p.id.toString() === pid);
-        }
-        if (!selected && list.length > 0) {
-          selected = list[0];
-          localStorage.setItem("current_paper_id", selected.id.toString());
-        }
-        if (selected) {
-          setCurrentPaper(selected);
-        }
-      })
-      .catch(() => { });
+    api.get("/papers").then(({ data }) => {
+      const list = Array.isArray(data) ? data : (data?.items ?? []);
+      setAllPapers(list);
+      const pid = localStorage.getItem("current_paper_id");
+      const selected = pid ? list.find((p: any) => p.id.toString() === pid) : list[0];
+      if (selected) {
+        setCurrentPaper(selected);
+        localStorage.setItem("current_paper_id", selected.id.toString());
+      }
+    }).catch(() => { });
   }, []);
 
   // When currentPaper changes, try to load its specific podcast
   useEffect(() => {
     if (currentPaper) {
       setPodcastData(null);
-      api
-        .get("/podcasts")
-        .then(({ data }) => {
-          const list = Array.isArray(data) ? data : (data?.items ?? []);
-          const existingPodcast = list.find(
-            (pd: any) => pd.paper_id === currentPaper.id,
-          );
-          if (existingPodcast) {
-            api
-              .get(`/podcasts/${existingPodcast.id}`)
-              .then(({ data: pd }) => {
-                setPodcastData(pd);
-                if (pd.audio_url) {
-                  const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.id}/audio?t=${Date.now()}`;
-                  audio.setAudioSrc(src);
-                  audio.setPodcastTitle(
-                    pd.title || currentPaper.title || "Podcast",
-                  );
-                }
-              })
-              .catch(() => { });
-          }
-        })
-        .catch(() => { });
+      api.get("/podcasts").then(({ data }) => {
+        const list = Array.isArray(data) ? data : (data?.items ?? []);
+        const existingPodcast = list.find((pd: any) => pd.paper_id === currentPaper.id);
+        if (existingPodcast) {
+          api.get(`/podcasts/${existingPodcast.id}`).then(({ data: pd }) => {
+            setPodcastData(pd);
+            if (pd.audio_url) {
+              const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.id}/audio?t=${Date.now()}`;
+              audio.setAudioSrc(src);
+              audio.setPodcastTitle(pd.title || currentPaper.title || "Podcast");
+            }
+          }).catch(() => { });
+        }
+      }).catch(() => { });
     }
   }, [currentPaper]);
 
   const handleGenerate = async () => {
-    const paperId = localStorage.getItem("current_paper_id");
-    if (!paperId) {
-      toast({
-        title: "No Paper Found",
-        description: "Upload a paper first to generate a podcast",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!currentPaper) return toast({ title: "No Paper Selected", variant: "destructive" });
+    if (audio.playing) audio.togglePlay();
     setIsGenerating(true);
     try {
-      if (podcastData?.id) {
-        try {
-          await api.delete(`/podcasts/${podcastData.id}`);
-        } catch (e) {
-          console.warn("Could not delete old podcast", e);
-        }
-      }
-
+      if (podcastData?.id) await api.delete(`/podcasts/${podcastData.id}`).catch(() => { });
       const { data } = await api.post("/podcasts/generate", {
-        paper_id: parseInt(paperId),
-        style: selectedStyle,
-        speed,
-        voice_male: voiceMale,
-        voice_female: voiceFemale,
-        persona_male_name: personaMaleName || undefined,
-        persona_female_name: personaFemaleName || undefined,
-        persona_male_style: personaMaleStyle || undefined,
-        persona_female_style: personaFemaleStyle || undefined,
+        paper_id: currentPaper.id, style: selectedStyle, speed, voice_male: voiceMale, voice_female: voiceFemale,
       });
       const pd = await api.get(`/podcasts/${data.podcast_id}`);
       setPodcastData(pd.data);
-      // Load into global audio context for persistent playback
       if (pd.data?.audio_url) {
         const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.data.id}/audio?t=${Date.now()}`;
         audio.setAudioSrc(src);
@@ -197,24 +165,12 @@ export default function PodcastPage() {
       }
       toast({ title: "Success", description: "Podcast generated!" });
     } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.response?.data?.detail || "Failed to generate podcast",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
+      toast({ title: "Error", description: err.response?.data?.detail || "Failed to generate podcast", variant: "destructive" });
+    } finally { setIsGenerating(false); }
   };
 
   const handleDownloadMp3 = () => {
-    if (!podcastData?.audio_url) {
-      toast({
-        title: "No Audio",
-        description: "Generate a podcast first to download",
-      });
-      return;
-    }
+    if (!podcastData?.audio_url) return toast({ title: "No Audio" });
     const url = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${podcastData.id}/audio?t=${Date.now()}`;
     const link = document.createElement("a");
     link.href = url;
@@ -222,23 +178,36 @@ export default function PodcastPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast({
-      title: "Downloading",
-      description: "Your mp3 is being downloaded",
-    });
   };
 
-  const activeTranscript = podcastData?.transcript_json || [];
+  const handleDeletePaper = async () => {
+    if (!currentPaper) return;
+    if (!window.confirm("Are you sure you want to delete this research paper? This will remove all associated data including podcasts and notes.")) {
+      return;
+    }
 
-  const saveProgress = async (pos: number) => {
-    if (podcastData?.id) {
-      try {
-        await api.put(`/podcasts/${podcastData.id}`, { last_position: pos });
-      } catch { }
+    try {
+      await api.delete(`/papers/${currentPaper.id}`);
+      toast({ title: "Paper Deleted" });
+      setAllPapers(prev => prev.filter(p => p.id !== currentPaper.id));
+      if (allPapers.length > 1) {
+        const next = allPapers.find(p => p.id !== currentPaper.id);
+        if (next) {
+          setCurrentPaper(next);
+          localStorage.setItem("current_paper_id", next.id.toString());
+        }
+      } else {
+        setCurrentPaper(null);
+        localStorage.removeItem("current_paper_id");
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to delete paper", variant: "destructive" });
     }
   };
 
+  const saveProgress = async (pos: number) => {
+    if (podcastData?.id) await api.put(`/podcasts/${podcastData.id}`, { last_position: pos }).catch(() => { });
+  };
   // Update active transcript index from global audio context time
   useEffect(() => {
     if (!podcastData?.transcript_json) return;
@@ -254,6 +223,16 @@ export default function PodcastPage() {
       accumulated += segDur + 0.5;
     }
   }, [currentTime, podcastData]);
+
+  // Auto-scroll the active transcript segment into view
+  useEffect(() => {
+    if (activeIndex >= 0) {
+      const el = document.getElementById(`transcript-seg-${activeIndex}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [activeIndex]);
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -280,7 +259,7 @@ export default function PodcastPage() {
 
   return (
     <DashboardLayout title="Podcast Player">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6 h-full">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Left: Player + Transcript */}
         <div className="space-y-4">
           {/* Player card */}
@@ -295,7 +274,7 @@ export default function PodcastPage() {
                 <FileText className="w-7 h-7 text-white" />
               </div>
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-wider text-primary mb-1 block">
+                <label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground mb-1.5 block">
                   Select Context Paper
                 </label>
                 <div className="relative mb-2 pr-4">
@@ -320,164 +299,114 @@ export default function PodcastPage() {
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  </div>
                 </div>
-                <p className="text-muted-foreground text-xs flex items-center gap-1.5 mb-3">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  {podcastData?.audio_url
-                    ? "Podcast audio generated and ready."
-                    : currentPaper
-                      ? `Ready to generate from ${currentPaper.filename?.substring(0, 30)}...`
-                      : "Upload a paper to begin."}
-                </p>
-
-                <div className="flex gap-2 mt-2 items-center">
-                  <select
-                    value={selectedStyle}
-                    onChange={(e) => {
-                      const s = e.target.value;
-                      setSelectedStyle(s);
-                      // Auto-set recommended speed per mode
-                      const modeSpeed: Record<string, number> = {
-                        educational: 1.0,
-                        beginner: 0.85,
-                        exam: 0.9,
-                        research: 1.0,
-                        debate: 1.05,
-                        storytelling: 0.95,
-                        "real-life": 1.0,
-                      };
-                      setSpeed(modeSpeed[s] ?? 1.0);
-                    }}
-                    className="bg-secondary text-secondary-foreground text-xs rounded p-1"
-                  >
-                    <option value="educational">🎓 Educational</option>
-                    <option value="beginner">🌱 Beginner</option>
-                    <option value="exam">📋 Exam Prep</option>
-                    <option value="research">🔬 Research</option>
-                    <option value="debate">⚡ Debate</option>
-                    <option value="storytelling">📖 Storytelling</option>
-                    <option value="real-life">🌍 Real-Life Examples</option>
-                  </select>
-
-                  <div className="flex flex-col gap-2 p-2 bg-accent/10 rounded-lg border border-accent/20">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Speaker Voices
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-muted-foreground font-medium truncate max-w-[400px]">
+                    {currentPaper?.authors ? `By ${currentPaper.authors}` : "VoxScholar Analysis Ready"}
+                  </p>
+                  {currentPaper && (
+                    <button
+                      onClick={handleDeletePaper}
+                      className="p-1 px-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all text-[10px] flex items-center gap-1 font-bold uppercase tracking-wider"
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Delete
+                    </button>
+                  )}
+                </div>
+                {/* Status badge */}
+                <div className="flex items-center gap-2 mb-3">
+                  {podcastData?.audio_url && !isSettingsStale ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-500 text-xs font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Voice generated &amp; ready
                     </span>
-                    <div className="flex gap-2">
-                      <div className="flex flex-col gap-1 w-1/2">
-                        <label className="text-[9px] text-muted-foreground">
-                          Male Speaker
-                        </label>
+                  ) : currentPaper ? (
+                    <div className="flex flex-wrap gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-primary text-white text-[10px] font-bold uppercase tracking-widest animate-pulse shadow-glow">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {isSettingsStale ? "Update Required" : "Ready to generate"}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary/20 border border-primary/20 text-foreground text-[10px] font-bold uppercase tracking-widest">
+                        Mode: {selectedStyle}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border text-muted-foreground text-xs">
+                      <FileText className="w-3.5 h-3.5" />
+                      Upload a paper to begin
+                    </span>
+                  )}
+                </div>
+
+                {/* Settings grid — stacks on mobile, 2-col on larger screens */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                  {/* Speaker Voices */}
+                  <div className="flex flex-col gap-2 p-3 bg-accent/10 rounded-xl border border-accent/20 col-span-full">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      🎤 Speaker Voices
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] text-muted-foreground">Male</label>
                         <select
                           value={voiceMale}
                           onChange={(e) => setVoiceMale(e.target.value)}
                           className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
                         >
                           {availableVoices.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name}
-                            </option>
+                            <option key={v.id} value={v.id}>{v.name}</option>
                           ))}
                         </select>
                       </div>
-
-                      <div className="flex flex-col gap-1 w-1/2">
-                        <label className="text-[9px] text-muted-foreground">
-                          Female Speaker
-                        </label>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] text-muted-foreground">Female</label>
                         <select
                           value={voiceFemale}
                           onChange={(e) => setVoiceFemale(e.target.value)}
                           className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
                         >
                           {availableVoices.map((v) => (
-                            <option key={v.id} value={v.id}>
-                              {v.name}
-                            </option>
+                            <option key={v.id} value={v.id}>{v.name}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                   </div>
-
-                  {/* Custom Personas */}
-                  <div className="flex flex-col gap-2 p-2 bg-primary/5 rounded-lg border border-primary/20 mt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
-                      🎙️ Custom Personas
-                    </span>
-                    <div className="flex gap-2">
-                      <div className="flex flex-col gap-1 w-1/2">
-                        <label className="text-[9px] text-muted-foreground">
-                          Host A Name
-                        </label>
-                        <input
-                          type="text"
-                          value={personaMaleName}
-                          onChange={(e) => setPersonaMaleName(e.target.value)}
-                          placeholder="e.g. Dr. Alex"
-                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <label className="text-[9px] text-muted-foreground mt-0.5">
-                          Personality
-                        </label>
-                        <input
-                          type="text"
-                          value={personaMaleStyle}
-                          onChange={(e) => setPersonaMaleStyle(e.target.value)}
-                          placeholder="e.g. sceptical professor"
-                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 w-1/2">
-                        <label className="text-[9px] text-muted-foreground">
-                          Host B Name
-                        </label>
-                        <input
-                          type="text"
-                          value={personaFemaleName}
-                          onChange={(e) => setPersonaFemaleName(e.target.value)}
-                          placeholder="e.g. Prof. Sara"
-                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <label className="text-[9px] text-muted-foreground mt-0.5">
-                          Personality
-                        </label>
-                        <input
-                          type="text"
-                          value={personaFemaleStyle}
-                          onChange={(e) =>
-                            setPersonaFemaleStyle(e.target.value)
-                          }
-                          placeholder="e.g. enthusiastic student"
-                          className="bg-background border border-input text-[11px] rounded p-1.5 w-full outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                    <p className="text-[9px] text-muted-foreground italic">
-                      Leave blank to use default names from selected voice
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className="btn-primary w-full py-2 flex items-center justify-center gap-2"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
-                        Generating Your Voices...
-                      </>
-                    ) : podcastData?.audio_url ? (
-                      "Generate New Podcast"
-                    ) : (
-                      "Generate Podcast"
-                    )}
-                  </button>
                 </div>
               </div>
             </div>
+
+            {/* Generate button — full width below settings */}
+            <button
+              onClick={handleGenerate}
+              disabled={isGenerating || !currentPaper}
+              className={`w-full py-3 mt-4 flex items-center justify-center gap-2 text-sm font-semibold rounded-xl bg-gradient-primary text-white shadow-glow transition-all ${isGenerating || !currentPaper
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:opacity-90 shadow-primary/20 active:scale-[0.98]"
+                }`}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating Your Voices...
+                </>
+              ) : podcastData?.audio_url && !isSettingsStale ? (
+                <>
+                  <SkipForward className="w-4 h-4" />
+                  Regenerate New Podcast
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  {isSettingsStale ? "Apply Changes & Generate" : "Generate Podcast"}
+                </>
+              )}
+            </button>
 
             {/* Progress bar — click to seek */}
             <div className="mb-4">
@@ -486,7 +415,6 @@ export default function PodcastPage() {
                 onClick={handleSeek}
                 onWheel={(e) => {
                   // Mouse wheel scrolls ±5s through the podcast
-                  e.preventDefault();
                   skip(e.deltaY > 0 ? -5 : 5);
                 }}
               >
@@ -548,30 +476,33 @@ export default function PodcastPage() {
                   step={0.05}
                   value={volume}
                   onChange={(e) => setVolume(parseFloat(e.target.value))}
-                  className="w-20 h-1.5 accent-primary cursor-pointer"
+                  className="w-20 h-1.5 appearance-none rounded-full cursor-pointer accent-white"
+                  style={{
+                    background: `linear-gradient(to right, #7B2CBF 0%, #7B2CBF ${volume * 100}%, hsl(var(--muted)) ${volume * 100}%, hsl(var(--muted)) 100%)`
+                  }}
                   title={`Volume: ${Math.round(volume * 100)}%`}
                 />
               </div>
               <button
                 onClick={handleDownloadMp3}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-sm hover:bg-accent/20 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-primary text-white text-xs font-semibold shadow-glow hover:opacity-90 transition-all"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 MP3
               </button>
             </div>
 
-            {/* Audio is managed globally by AudioContext — no local audio element needed */}
+            {/* Global audio state used */}
           </motion.div>
 
-          {/* Transcript */}
+          {/* Transcript section */}
           <div className="card-premium p-5 max-h-[420px] overflow-y-auto space-y-3">
             <div className="flex items-center justify-between mb-4">
               <h4 className="font-display font-semibold text-foreground">
                 Podcast Transcript
               </h4>
-              {!podcastData && (
-                <span className="text-xs text-muted-foreground">
+              {!podcastData && currentPaper && (
+                <span className="text-xs text-muted-foreground animate-pulse">
                   Waiting for generation...
                 </span>
               )}
@@ -612,6 +543,7 @@ export default function PodcastPage() {
                 return (
                   <motion.div
                     key={i}
+                    id={`transcript-seg-${i}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
@@ -635,7 +567,7 @@ export default function PodcastPage() {
                     <p
                       className={`text-sm leading-relaxed ${isActive ? "text-foreground" : "text-muted-foreground"}`}
                     >
-                      {entry.text}
+                      {renderEmphasizedText(entry.text)}
                     </p>
                   </motion.div>
                 );
@@ -955,8 +887,8 @@ function NotesPanel({
               if (t === "summary" && !summary) fetchSummary();
             }}
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${activeTab === t
-              ? "bg-card shadow text-foreground border border-border"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-gradient-primary text-white shadow-glow hover:opacity-90 active:scale-[0.98]"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               }`}
           >
             {t === "notes" ? "📝 AI Notes" : "🧠 AI Summary"}
@@ -1032,7 +964,7 @@ function NotesPanel({
               </button>
               <button
                 onClick={handleInsertTimestamp}
-                className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 hover:bg-primary/20 font-bold ml-1"
+                className="text-[9px] bg-gradient-primary text-white px-2 py-0.5 rounded shadow-glow hover:opacity-90 font-bold ml-1 transition-all"
               >
                 TS
               </button>
@@ -1066,7 +998,7 @@ function NotesPanel({
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="py-2 rounded-xl text-xs font-medium bg-secondary text-secondary-foreground hover:bg-accent/20 border border-border flex items-center justify-center gap-1.5">
+                <button className="py-2 rounded-xl text-xs font-semibold bg-gradient-primary text-white shadow-glow hover:opacity-90 transition-all flex items-center justify-center gap-1.5">
                   <Download className="w-3 h-3" /> Export
                 </button>
               </DropdownMenuTrigger>

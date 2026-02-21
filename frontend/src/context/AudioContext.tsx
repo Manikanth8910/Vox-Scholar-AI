@@ -16,6 +16,10 @@ interface AudioContextType {
     togglePlay: () => void;
     seek: (ratio: number) => void;
     skip: (secs: number) => void;
+    selectedStyle: string;
+    setSelectedStyle: (s: string) => void;
+    speed: number;
+    setSpeed: (v: number) => void;
 }
 
 const AudioCtx = createContext<AudioContextType | null>(null);
@@ -29,6 +33,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     const [volume, setVolumeState] = useState(0.8);
     const [progress, setProgress] = useState(0);
     const [podcastTitle, setPodcastTitle] = useState("");
+    const [selectedStyle, setSelectedStyleState] = useState("educational");
+    const [speed, setSpeedState] = useState(1.0);
 
     const setAudioSrc = (src: string | null) => {
         setAudioSrcState(src);
@@ -41,6 +47,25 @@ export function AudioProvider({ children }: { children: ReactNode }) {
     const setVolume = (v: number) => {
         setVolumeState(v);
         audioRef.current.volume = v;
+    };
+
+    const setSpeed = (v: number) => {
+        setSpeedState(v);
+        audioRef.current.playbackRate = v;
+    };
+
+    const setSelectedStyle = (s: string) => {
+        setSelectedStyleState(s);
+        const modeSpeed: Record<string, number> = {
+            educational: 1.0,
+            beginner: 0.85,
+            exam: 0.9,
+            research: 1.0,
+            debate: 1.05,
+            storytelling: 0.95,
+            "real-life": 1.0,
+        };
+        setSpeed(modeSpeed[s] ?? 1.0);
     };
 
     useEffect(() => {
@@ -96,6 +121,8 @@ export function AudioProvider({ children }: { children: ReactNode }) {
             podcastTitle, setPodcastTitle,
             audioRef: audioRef as React.RefObject<HTMLAudioElement>,
             togglePlay, seek, skip,
+            selectedStyle, setSelectedStyle,
+            speed, setSpeed,
         }}>
             {children}
         </AudioCtx.Provider>
