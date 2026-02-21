@@ -147,7 +147,7 @@ async def generate_podcast(
         podcast = await podcast_crud.set_podcast_audio(
             db,
             podcast.id,
-            audio_url=local_path,  # Store local path in DB
+            audio_url=audio_url,
             audio_duration=duration,
             audio_size=len(audio_bytes),
             transcript=transcript_text,

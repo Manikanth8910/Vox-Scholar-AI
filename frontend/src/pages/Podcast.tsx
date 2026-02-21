@@ -160,6 +160,14 @@ export default function PodcastPage() {
     }
     setIsGenerating(true);
     try {
+      if (podcastData?.id) {
+        try {
+          await api.delete(`/podcasts/${podcastData.id}`);
+        } catch (e) {
+          console.warn("Could not delete old podcast", e);
+        }
+      }
+
       const { data } = await api.post("/podcasts/generate", {
         paper_id: parseInt(paperId),
         style: selectedStyle,
@@ -279,17 +287,40 @@ export default function PodcastPage() {
                 <FileText className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="font-display font-semibold text-foreground leading-tight">
-                  {podcastData?.title ||
-                    currentPaper?.title ||
-                    "Attention Is All You Need"}
-                </h3>
-                <p className="text-muted-foreground text-sm mt-0.5">
-                  {podcastData
-                    ? "AI Generated Podcast"
+                <label className="text-[10px] uppercase font-bold tracking-wider text-primary mb-1 block">
+                  Select Context Paper
+                </label>
+                <div className="relative mb-2 pr-4">
+                  <select
+                    value={currentPaper?.id || ""}
+                    onChange={(e) => {
+                      const pid = parseInt(e.target.value);
+                      const paper = allPapers.find((p) => p.id === pid);
+                      if (paper) {
+                        setCurrentPaper(paper);
+                        localStorage.setItem("current_paper_id", String(pid));
+                      }
+                    }}
+                    className="w-full appearance-none bg-background border border-border hover:border-primary/50 text-sm font-semibold text-foreground rounded-lg py-2 pl-3 pr-8 outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary/20 truncate"
+                  >
+                    {allPapers.length === 0 && (
+                      <option value="">No papers available</option>
+                    )}
+                    {allPapers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                </div>
+                <p className="text-muted-foreground text-xs flex items-center gap-1.5 mb-3">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  {podcastData?.audio_url
+                    ? "Podcast audio generated and ready."
                     : currentPaper
-                      ? `Ready to generate from ${currentPaper.filename}`
-                      : "Vaswani et al. · NeurIPS 2017"}
+                      ? `Ready to generate from ${currentPaper.filename?.substring(0, 30)}...`
+                      : "Upload a paper to begin."}
                 </p>
 
                 <div className="flex gap-2 mt-2 items-center">
@@ -578,8 +609,8 @@ export default function PodcastPage() {
                     transition={{ delay: i * 0.05 }}
                     onClick={() => setActiveIndex(i)}
                     className={`p-3 rounded-xl cursor-pointer transition-all ${entry.speaker === "A"
-                        ? "bg-primary/5 hover:bg-primary/10"
-                        : "bg-accent/5 hover:bg-accent/10"
+                      ? "bg-primary/5 hover:bg-primary/10"
+                      : "bg-accent/5 hover:bg-accent/10"
                       } ${isActive ? "ring-2 ring-primary/40 shadow-glow" : ""}`}
                   >
                     <div className="flex items-center justify-between mb-1">
@@ -916,8 +947,8 @@ function NotesPanel({
               if (t === "summary" && !summary) fetchSummary();
             }}
             className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${activeTab === t
-                ? "bg-card shadow text-foreground border border-border"
-                : "text-muted-foreground hover:text-foreground"
+              ? "bg-card shadow text-foreground border border-border"
+              : "text-muted-foreground hover:text-foreground"
               }`}
           >
             {t === "notes" ? "📝 AI Notes" : "🧠 AI Summary"}
