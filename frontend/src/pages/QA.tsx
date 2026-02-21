@@ -37,9 +37,9 @@ export default function QAPage() {
       api
         .get(`/papers/${pid}`)
         .then(({ data }) => setPaperData(data))
-        .catch(() => {});
+        .catch(() => { });
       api
-        .get(`/chat/history?paper_id=${pid}`)
+        .get(`/chat/history/${pid}`)
         .then(({ data }) => {
           const history = data.messages.map((m: any) => ({
             role: m.role === "user" ? "user" : "ai",
@@ -49,14 +49,14 @@ export default function QAPage() {
             history.length > 0
               ? history
               : [
-                  {
-                    role: "ai",
-                    text: "Hello! I'm ready to help you analyze your paper. Ask me anything!",
-                  },
-                ],
+                {
+                  role: "ai",
+                  text: "Hello! I'm ready to help you analyze your paper. Ask me anything!",
+                },
+              ],
           );
         })
-        .catch(() => {});
+        .catch(() => { });
     } else {
       setMessages([
         {
@@ -140,11 +140,10 @@ export default function QAPage() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[82%] rounded-2xl px-4 py-3 ${
-                    msg.role === "user"
+                  className={`max-w-[82%] rounded-2xl px-4 py-3 ${msg.role === "user"
                       ? "bg-gradient-primary text-white rounded-br-sm"
                       : "bg-card border border-border text-foreground rounded-bl-sm"
-                  }`}
+                    }`}
                 >
                   {msg.role === "ai" && (
                     <div className="flex items-center justify-between mb-2 border-b border-border pb-1">
