@@ -287,38 +287,36 @@ class OpenAIService:
         """Generate a podcast script with two speakers."""
         
         if style == "debate":
-            system_prompt = """Generate a debate-style podcast script about a research paper.
-            Two speakers debate the merits and limitations of the paper.
-            Include: introduction, key points debate, and conclusion."""
+            system_prompt = """Generate a high-energy, debate-style podcast script about a research paper.
+            Two speakers fiercely debate the merits and limitations of the paper with strong opinions.
+            Include: explosive introduction, intense back-and-forth key points debate, and a thought-provoking conclusion."""
         elif style == "beginner":
-            system_prompt = """Generate a beginner-friendly podcast script about a research paper.
-            Two speakers explain the paper using simple analogies and everyday language. Avoid jargon.
-            Include: high-level introduction, real-world analogies for key concepts, simplified findings, and a relatable conclusion."""
+            system_prompt = """Generate an incredibly engaging, beginner-friendly podcast script about a research paper.
+            Two speakers hype up the paper using mind-blowing analogies and everyday language. Absolutely NO dense jargon without a fun explanation!
+            Include: high-energy introduction, hilarious or relatable real-world analogies, simplified findings, and a "wow" conclusion."""
         elif style == "exam":
-            system_prompt = """Generate an exam-prep podcast script about a research paper.
-            Two speakers review the paper with a focus on memorization and testing.
-            Include: quick introduction, core definitions, critical methodologies, major testable findings, and a rapid recap/quiz at the end."""
+            system_prompt = """Generate a fast-paced, high-stakes exam-prep podcast script about a research paper.
+            Two speakers frantically review the most critical, testable parts of the paper as if cramming for a final.
+            Include: punchy introduction, core definitions, critical methodologies, testable findings, and a rapid recap/quiz at the end."""
         elif style == "research":
-            system_prompt = """Generate a researcher-focused podcast script about a research paper.
-            Two experts critically analyze the paper's methodology, data, and broader implications.
-            Include: formal introduction, deep-dive into the methodology, statistical significance of findings, and future research directions."""
+            system_prompt = """Generate a brilliant, deep-dive researcher-focused podcast script about a research paper.
+            Two passionate experts excitedly geek out and critically analyze the paper's methodology, data, and groundbreaking implications.
+            Include: academic but enthusiastic introduction, deep methodological critique, statistical significance, and massive future research impacts."""
         elif style == "storytelling":
-            system_prompt = """Generate a storytelling-style podcast script about a research paper.
-            Follow the narrative arc: Problem → Challenge → Solution → Impact.
-            Two speakers tell the story of the research as if it's a gripping journey.
-            Use vivid language, a narrative flow, and emotional resonance.
-            Make it engaging, memorable, and inspiring.
-            Avoid dry recitation of facts; instead weave insights into a compelling story."""
+            system_prompt = """Generate a cinematic, storytelling-style podcast script about a research paper.
+            Follow the narrative arc: Problem → Challenge → Solution → Epic Impact.
+            Two speakers tell the thrilling story of the researchers' journey.
+            Use vivid, dramatic language, suspenseful pacing, and emotional resonance.
+            Make it an unforgettable, edge-of-your-seat narrative!"""
         elif style in ("real-life", "real_life"):
-            system_prompt = """Generate a real-life examples podcast script about a research paper.
-            Two speakers connect every key concept and finding to everyday situations and relatable analogies.
-            Use comparisons from daily life (cooking, sports, traffic, social media, etc.) to explain technical ideas.
-            Keep it practical, visual, and easy to understand.
-            Include: real-world applications, tangible impacts, and memorable comparisons."""
+            system_prompt = """Generate an extremely relatable, real-life examples podcast script about a research paper.
+            Two speakers connect every key concept to hilarious, relatable everyday situations.
+            Use brilliant comparisons from daily life (cooking disasters, terrible traffic, messy social media, etc.) to explain science.
+            Keep it wildly practical and visual."""
         else:
-            system_prompt = """Generate an educational podcast script about a research paper.
-            Two speakers discuss the paper in an engaging, easy-to-understand way.
-            Include: introduction, background, key concepts, findings, and conclusion."""
+            system_prompt = """Generate a highly energetic, educational podcast script about a research paper.
+            Two speakers excitedly discuss the paper in an incredibly engaging, easy-to-understand way.
+            Include: fascinating introduction, background, jaw-dropping key concepts, findings, and an inspiring conclusion."""
 
         persona_instructions = ""
         if persona_male_style or persona_female_style:
@@ -347,17 +345,24 @@ class OpenAIService:
           {{"speaker": "B", "name": "Speaker Name", "text": "Dialogue text", "timestamp": "0:30"}}
         ]
 
-        Make it engaging and educational. Each segment should be 30-60 seconds when spoken.
+        CRITICAL INSTRUCTIONS FOR INTERACTIVITY AND TONE:
+        1. Start with an explosive, attention-grabbing hook! Use words like "mind-blowing", "revolutionary", "game-changer", "unbelievable", or "fascinating".
+        2. Make the conversation highly interactive. Speakers MUST interrupt each other, agree enthusiastically (e.g., "Exactly!", "Whoa, wait!", "Spot on!"), and build on ideas naturally.
+        3. Zero boring monologues. Keep the back-and-forth dynamic, fast-paced, and filled with relatable emotional reactions.
+        4. Constantly ask rhetorical questions to pull the listener in. 
+        5. Break down complex jargon into mind-blowing, simple analogies. 
+
+        Make it deeply engaging and educational. Each segment should be punchy and around 15-40 seconds when spoken.
         Total duration should be around 4-5 minutes.
         """
         
         response_content = await self._call_ai_service(
             messages=[
-                {"role": "system", "content": "You are a professional podcast script writer."},
+                {"role": "system", "content": "You are a world-class, multi-award-winning podcast producer and scriptwriter known for creating viral, highly engaging, and intensely interactive educational content."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=3000,
-            temperature=0.7
+            temperature=0.8
         )
         
         try:
