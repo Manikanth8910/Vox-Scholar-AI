@@ -142,7 +142,7 @@ export default function PodcastPage() {
               .then(({ data: pd }) => {
                 setPodcastData(pd);
                 if (pd.audio_url) {
-                  const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.id}/audio`;
+                  const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.id}/audio?t=${Date.now()}`;
                   audio.setAudioSrc(src);
                   audio.setPodcastTitle(
                     pd.title || currentPaper.title || "Podcast",
@@ -191,7 +191,7 @@ export default function PodcastPage() {
       setPodcastData(pd.data);
       // Load into global audio context for persistent playback
       if (pd.data?.audio_url) {
-        const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.data.id}/audio`;
+        const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.data.id}/audio?t=${Date.now()}`;
         audio.setAudioSrc(src);
         audio.setPodcastTitle(pd.data.title || "Podcast");
       }
@@ -215,7 +215,7 @@ export default function PodcastPage() {
       });
       return;
     }
-    const url = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${podcastData.id}/audio`;
+    const url = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${podcastData.id}/audio?t=${Date.now()}`;
     const link = document.createElement("a");
     link.href = url;
     link.download = `${podcastData.title || "podcast"}.mp3`;
