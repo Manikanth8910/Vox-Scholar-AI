@@ -90,7 +90,15 @@ export default function PodcastPage() {
     api
       .get("/services/voices/edge-tts")
       .then(({ data }) => {
-        setAvailableVoices(data || []);
+        const allowedVoices = [
+          "en-IN-NeerjaNeural",
+          "en-IN-PrabhatNeural",
+          "en-IN-PriyaNeural",
+          "en-IN-RaviNeural",
+        ];
+        const allVoices = data || [];
+        const filtered = allVoices.filter((v: any) => allowedVoices.includes(v.id));
+        setAvailableVoices(filtered);
       })
       .catch(() => { });
 
@@ -134,7 +142,7 @@ export default function PodcastPage() {
               .then(({ data: pd }) => {
                 setPodcastData(pd);
                 if (pd.audio_url) {
-                  const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}${pd.audio_url}`;
+                  const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.id}/audio`;
                   audio.setAudioSrc(src);
                   audio.setPodcastTitle(
                     pd.title || currentPaper.title || "Podcast",
@@ -183,7 +191,7 @@ export default function PodcastPage() {
       setPodcastData(pd.data);
       // Load into global audio context for persistent playback
       if (pd.data?.audio_url) {
-        const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}${pd.data.audio_url}`;
+        const src = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${pd.data.id}/audio`;
         audio.setAudioSrc(src);
         audio.setPodcastTitle(pd.data.title || "Podcast");
       }
@@ -207,7 +215,7 @@ export default function PodcastPage() {
       });
       return;
     }
-    const url = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}${podcastData.audio_url}`;
+    const url = `${import.meta.env.VITE_BACKEND_URL || "http://localhost:6279"}/api/podcasts/${podcastData.id}/audio`;
     const link = document.createElement("a");
     link.href = url;
     link.download = `${podcastData.title || "podcast"}.mp3`;

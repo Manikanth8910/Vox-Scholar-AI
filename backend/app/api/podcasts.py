@@ -147,7 +147,7 @@ async def generate_podcast(
         podcast = await podcast_crud.set_podcast_audio(
             db,
             podcast.id,
-            audio_url=audio_url,
+            audio_url=local_path,  # Back to local_path because FileResponse needs it
             audio_duration=duration,
             audio_size=len(audio_bytes),
             transcript=transcript_text,
@@ -272,7 +272,6 @@ async def delete_podcast(
 @router.get("/{podcast_id}/audio")
 async def get_podcast_audio(
     podcast_id: int,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Get podcast audio file."""
@@ -284,11 +283,8 @@ async def get_podcast_audio(
             detail="Podcast not found"
         )
     
-    if podcast.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this podcast"
-        )
+    # Note: Authorization check removed to allow standard HTML5 <audio> tag 
+    # to fetch the stream without headers (since browsers don't send auth headers on media tags)
     
     if not podcast.audio_url or not os.path.exists(podcast.audio_url):
         raise HTTPException(
