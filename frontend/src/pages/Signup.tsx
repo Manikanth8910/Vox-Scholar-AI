@@ -257,7 +257,7 @@ export default function Signup() {
                 shape="rectangular"
                 theme="filled_black"
                 text="continue_with"
-                width="100%"
+                
               />
             </div>
           </form>

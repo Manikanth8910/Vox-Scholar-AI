@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Headphones, Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { GoogleLogin } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
+import { GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
@@ -210,7 +210,7 @@ export default function Login() {
                 shape="rectangular"
                 theme="filled_black"
                 text="continue_with"
-                width="100%"
+                
               />
             </div>
           </form>
