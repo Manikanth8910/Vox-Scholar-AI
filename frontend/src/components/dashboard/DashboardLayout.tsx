@@ -311,8 +311,6 @@ export default function DashboardLayout({ children, title }: DashboardLayoutProp
                 className="w-16 h-1 accent-primary cursor-pointer"
               />
             </div>
-            {/* Go to podcast */}
-            <Link to="/podcast" className="shrink-0 text-[10px] text-primary hover:underline hidden sm:block">Open ↗</Link>
           </div>
         </div>
       )}
