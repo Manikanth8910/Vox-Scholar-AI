@@ -304,6 +304,34 @@ async def get_podcast_audio(
     )
 
 
+@router.get("/paper/{paper_id}/audio")
+async def get_paper_podcast_audio(
+    paper_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Get podcast audio file by paper ID."""
+    podcast = await podcast_crud.get_podcast_by_paper_id(db, paper_id)
+    
+    if not podcast:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Podcast not found for this paper"
+        )
+    
+    if not podcast.audio_url or not os.path.exists(podcast.audio_url):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audio file not found"
+        )
+    
+    from fastapi.responses import FileResponse
+    return FileResponse(
+        podcast.audio_url,
+        media_type="audio/mpeg",
+        filename=f"podcast_paper_{paper_id}.mp3"
+    )
+
+
 @router.post("/{podcast_id}/play", response_model=MessageResponse)
 async def record_play(
     podcast_id: int,

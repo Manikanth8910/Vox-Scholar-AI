@@ -45,6 +45,7 @@ class PaperResponse(PaperBase):
     is_processed: bool
     processing_status: str
     reading_progress: int
+    has_podcast: bool = False
     created_at: datetime
     updated_at: datetime
     

@@ -9,8 +9,9 @@ import hashlib
 
 async def get_paper(db: AsyncSession, paper_id: int) -> Optional[Paper]:
     """Get paper by ID."""
+    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(Paper).where(Paper.id == paper_id)
+        select(Paper).options(selectinload(Paper.podcasts)).where(Paper.id == paper_id)
     )
     return result.scalar_one_or_none()
 
@@ -76,7 +77,8 @@ async def list_user_papers(
     processed_only: bool = False
 ) -> List[Paper]:
     """List all papers for a user."""
-    query = select(Paper).where(Paper.user_id == user_id).order_by(desc(Paper.created_at))
+    from sqlalchemy.orm import selectinload
+    query = select(Paper).options(selectinload(Paper.podcasts)).where(Paper.user_id == user_id).order_by(desc(Paper.created_at))
     
     if processed_only:
         query = query.where(Paper.is_processed == True)

@@ -25,6 +25,14 @@ async def get_podcast_by_paper(db: AsyncSession, paper_id: int, user_id: int) ->
     return result.scalar_one_or_none()
 
 
+async def get_podcast_by_paper_id(db: AsyncSession, paper_id: int) -> Optional[Podcast]:
+    """Get podcast by paper ID."""
+    result = await db.execute(
+        select(Podcast).where(Podcast.paper_id == paper_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_podcast(
     db: AsyncSession, 
     user_id: int, 

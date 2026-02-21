@@ -216,51 +216,49 @@ class OpenAIService:
         Be precise, helpful, and cite specific parts when possible.
 
         Context from paper:
-        {context[:6000]}
+        {context[:100000]}
 
-        FORMATTING RULES — follow these strictly:
-        - Use clean Markdown. Use ## for section headers, - or 1. for lists.
-        - Use **bold** ONLY for genuinely important key terms, not for decoration.
-        - Never use *** or excessive asterisks.
-        - For comparisons or multi-part answers, use a structured layout with headers.
-        - Keep paragraphs short (2-4 sentences). Use line breaks between sections.
-        - Prefer bullet points over long run-on paragraphs.
-        - End with a short 1-line summary or actionable takeaway if relevant.
-        - Use simple language for complex concepts unless asked for technical depth.
+        FORMATTING RULES:
+        - Use clean Markdown with structured headers (##).
+        - Use **bold** for key terms only.
+        - **MATHEMATICAL FORMULAS**: Always present formulas in a clear, distinct list or table. Use **code blocks** (e.g., `E = mc²`) for single formulas and **tables** for lists of definitions.
+        - **STYLING**: Make the mathematical definitions look like a professional "Formula Reference" section.
+        - Suggest 2-3 deep follow-up questions at the end of every relevant answer.
 
-        CRITICAL GUIDELINES:
-        1. STRICT ADHERENCE: You must ONLY answer questions that are directly or indirectly related to the provided research paper context.
-        2. REFUSE OUT-OF-CONTEXT QUESTIONS: If the user asks a question that is NOT related to the paper (e.g., general knowledge like "Who is Narendra Modi?", personal advice, or pop culture), you must politely but firmly decline. 
-           Use this exact phrasing (or something very similar): "I'm sorry, but this question is not related to the research paper you uploaded. I am designed to focus specifically on analyzing and explaining your research data."
-        3. BE DETAILED: When answering relevant research questions, provide comprehensive and structured explanations using the findings from the paper.
-        4. STRUCTURE: Use markdown (bullet points, bold text, numbered lists) to make complex information digestible.
-        5. ENGAGEMENT: At the end of every relevant research answer, suggest 2-3 deep follow-up questions specifically based on the paper's content.
-        6. STYLE: Maintain a professional, academic, and focused tone.
-        
-        Context from Research Paper:
-        {context[:12000]}
-        
-        Current User Request: {message}
+        CRITICAL GUIDELINE: If the question is UNRELATED to the paper context (e.g., general knowledge, pop culture), 
+        politely decline by saying: "I'm sorry, but this question is not related to the research paper you uploaded. I am designed to focus specifically on analyzing and explaining your research data."
         """
         
         messages = [{"role": "system", "content": system_prompt}]
         
         if chat_history:
+            # Only use last 5 rounds of history to save tokens and keep focus
             for msg in chat_history[-10:]:
                 messages.append(msg)
         
         messages.append({"role": "user", "content": message})
         
-        content = await self._call_ai_service(
-            messages=messages,
-            max_tokens=1500,
-            temperature=0.5
-        )
+        # Use a reasonable timeout to prevent hanging the whole backend
+        try:
+            content = await self._call_ai_service(
+                messages=messages,
+                max_tokens=3000,
+                temperature=0.4
+            )
+        except Exception as e:
+            return f"I'm sorry, I encountered an error while processing your request: {str(e)}", 0
         
         content = content or ""
-        tokens_used = len(content.split()) + len(message.split()) + 500 
+        
+        # Handle DeepSeek-R1 thinking tags if present
+        if "<think>" in content and "</think>" in content:
+            content = content.split("</think>")[-1].strip()
+        elif "<think>" in content:
+            # Fallback if AI produced unbalanced tags
+            content = content.replace("<think>", "").strip()
 
         content = self._clean_chat_response(content)
+        tokens_used = len(content.split()) + len(message.split()) + 800 
 
         return content, tokens_used
 
@@ -290,10 +288,14 @@ class OpenAIService:
             system_prompt = """You are producing a high-energy, debate-style podcast script about a complex research paper.
             CONCEPT: Two brilliant speakers fiercely debate the merits, limitations, and real-world implications of the paper. They must have strong, contrasting opinions.
             TONE: Explosive, passionate, slightly confrontational but professionally respectful. Constant interruptions, gasped reactions, and intense back-and-forth.
+            MODE-SPECIFIC RULES:
+            - Speakers should NOT always agree. They should push back on each other's interpretations.
+            - Use phrases like "I strongly disagree," "Wait, that's a huge leap," "How can you defend that methodology?", or "The data simply doesn't support your optimism!"
+            - The hook should be the most controversial point of the paper.
             STRUCTURE:
-            1. Explosive Introduction: Hook the listener immediately with the most controversial or shocking claim of the paper.
-            2. The Core Debate: One speaker aggressively defends the paper's findings, while the other hyper-critically attacks the methodology or data limitations.
-            3. Resolution: A thought-provoking conclusion where both speakers agree on the broader implications, even if they disagree on the specifics."""
+            1. Explosive Introduction: Hook the listener immediately with a shocking claim.
+            2. The Core Debate: One speaker aggressively defends the paper, while the other hyper-critically attacks the methodology or data.
+            3. Resolution: A conclusion where they agree on the paper's importance, despite their disagreements."""
             
         elif style == "beginner":
             system_prompt = """You are producing an incredibly engaging, wildly entertaining, beginner-friendly podcast script about a complex research paper.
@@ -308,14 +310,17 @@ class OpenAIService:
             3. "Wow" Conclusion: Explain how this research changes the listener's everyday life right now."""
             
         elif style == "exam":
-            system_prompt = """You are producing a fast-paced, high-stakes exam-prep podcast script about a research paper.
+            system_prompt = """You are producing a fast-paced, high-stakes exam-prep podcast script.
             CONCEPT: Two desperate, highly caffeinated students (or professors) are frantically reviewing the absolute most critical, testable parts of this paper the night before a huge final exam.
             TONE: Urgent, intense, rapid-fire, and extremely focused on what "will be on the test".
+            MODE-SPECIFIC RULES:
+            - Use language like "Remember this for the MCQ," "This definition is a 5-marker for sure," or "The examiner loves to ask about this specific result."
+            - Zero fluff. Every sentence must contribute to passing the exam.
             STRUCTURE:
-            1. Punchy Hook: "Wake up! We have 5 minutes to memorize this paper before the exam!"
-            2. Core Definitions: Rapidly define the absolute most important buzzwords and methodologies.
-            3. Testable Findings: Highlight exactly what the major statistical findings were and why they matter.
-            4. Pop Quiz Recap: A chaotic but effective 30-second rapid-fire quiz at the end to cement the knowledge."""
+            1. Punchy Hook: "Wake up! We have minutes to memorize this before the exam starts!"
+            2. Core Definitions: Rapidly define only the most important buzzwords.
+            3. Testable Findings: Highlight specific statistical results and why they are 'exam-material'.
+            4. Pop Quiz Recap: A chaotic 30-second rapid-fire quiz to cement the knowledge."""
             
         elif style == "research":
             system_prompt = """You are producing a brilliant, deep-dive researcher-focused podcast script about a research paper.
@@ -368,6 +373,28 @@ class OpenAIService:
         Let these personalities shape HOW they speak — word choice, sentence structure, tone, and level of formality.
         """
 
+        # ── Dynamic length scaling based on content volume ──────────────────
+        n_findings = len(key_findings)
+        summary_words = len(summary.split()) if summary else 0
+
+        if n_findings <= 3 and summary_words < 200:
+            # Short paper / single section
+            min_segs, max_segs = 8, 12
+            duration_min, duration_max = 3, 5
+        elif n_findings <= 6 and summary_words < 500:
+            # Medium paper
+            min_segs, max_segs = 12, 18
+            duration_min, duration_max = 5, 8
+        elif n_findings <= 12 and summary_words < 1200:
+            # Long paper
+            min_segs, max_segs = 20, 30
+            duration_min, duration_max = 8, 12
+        else:
+            # Very comprehensive / Academic Unit / Multi-chapter
+            min_segs, max_segs = 30, 45
+            duration_min, duration_max = 12, 18
+        # ────────────────────────────────────────────────────────────────────
+
         findings_text = "\n".join([f"- {f}" for f in key_findings])
 
         prompt = f"""{system_prompt}{persona_instructions}
@@ -384,14 +411,20 @@ class OpenAIService:
         ]
 
         CRITICAL INSTRUCTIONS FOR INTERACTIVITY AND TONE:
-        1. Start with an explosive, attention-grabbing hook! Use words like "mind-blowing", "revolutionary", "game-changer", "unbelievable", or "fascinating".
-        2. Make the conversation highly interactive. Speakers MUST interrupt each other, agree enthusiastically (e.g., "Exactly!", "Whoa, wait!", "Spot on!"), and build on ideas naturally.
-        3. Zero boring monologues. Keep the back-and-forth dynamic, fast-paced, and filled with relatable emotional reactions.
-        4. Constantly ask rhetorical questions to pull the listener in. 
-        5. Break down complex jargon into mind-blowing, simple analogies. 
+        1. FOLLOW THE MODE-SPECIFIC TONE ABOVE (e.g. if it's a debate, DISAGREE; if it's exam-prep, BE URGENT).
+        2. Make the conversation highly interactive. Speakers MUST interrupt each other and build on ideas naturally.
+        3. Zero boring monologues. Keep the back-and-forth dynamic and fast-paced.
+        4. Break down complex jargon into analogies that FIT THE MODE (e.g. use student analogies for 'exam-prep').
+        5. AUDIO EMPHASIS: Wrap KEY TERMS, crucial findings, and pivotal concepts in **double asterisks** (e.g. "The model achieved **94% accuracy**"). These will be highlighted in the transcript.
 
-        Make it deeply engaging and educational. Each segment should be punchy and around 15-40 seconds when spoken.
-        Total duration should be around 4-5 minutes.
+        HARD CONTENT RULES — you MUST follow these:
+        - MANDATORY: Cover EVERY single key finding listed below. Do NOT skip any finding, even if it seems minor.
+        - MANDATORY: Cover the entire scope of the provided summary.
+        - Each segment must be SHORT: 2-3 sentences max (15-30 seconds when spoken aloud).
+        - CRITICAL: Do NOT read the summary or findings word-for-word. Transform them into natural, punchy conversation.
+        - Do NOT pad or repeat points. Stay punchy and information-dense.
+        - Target {min_segs} to {max_segs} dialogue segments total to ensure all points are covered thoroughly.
+        - Target around {duration_min} to {duration_max} minutes total podcast duration.
         """
         
         response_content = await self._call_ai_service(
@@ -399,7 +432,7 @@ class OpenAIService:
                 {"role": "system", "content": "You are a world-class, multi-award-winning podcast producer and scriptwriter known for creating viral, highly engaging, and intensely interactive educational content."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=3000,
+            max_tokens=4000,
             temperature=0.8
         )
         

@@ -50,6 +50,13 @@ class Paper(Base, TimestampMixin):
     notes = relationship("Note", back_populates="paper", cascade="all, delete-orphan")
     chat_messages = relationship("ChatMessage", back_populates="paper", cascade="all, delete-orphan")
     
+    @property
+    def has_podcast(self) -> bool:
+        """Check if paper has a generated podcast."""
+        if not self.podcasts:
+            return False
+        return any(p.status == "completed" for p in self.podcasts)
+
     def __repr__(self):
         return f"<Paper(id={self.id}, title={self.title})>"
 
