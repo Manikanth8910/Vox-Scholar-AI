@@ -1,5 +1,6 @@
 import os
 import aiofiles
+import asyncio
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -178,21 +179,18 @@ async def run_processing(paper_id: int, user_id: int, db_session_factory):
             paper.raw_text = raw_text
             await db.commit()
             
-            # 2. AI Analysis
-            print("DEBUG: [Background] Generating summary...")
-            summary = await openai_service.generate_summary(raw_text)
+            # 2. AI Analysis (Concurrent Execution for speed)
+            print("DEBUG: [Background] Generating AI insights concurrently...")
+            summary, topics, key_findings, methodology = await asyncio.gather(
+                openai_service.generate_summary(raw_text),
+                openai_service.extract_topics(raw_text),
+                openai_service.extract_key_findings(raw_text),
+                openai_service.generate_methodology(raw_text)
+            )
+            
             paper.summary = summary
-            
-            print("DEBUG: [Background] Extracting topics...")
-            topics = await openai_service.extract_topics(raw_text)
             paper.topics = topics
-            
-            print("DEBUG: [Background] Extracting findings...")
-            key_findings = await openai_service.extract_key_findings(raw_text)
             paper.key_findings = key_findings
-            
-            print("DEBUG: [Background] Generating methodology...")
-            methodology = await openai_service.generate_methodology(raw_text)
             paper.methodology = methodology
             
             # Mark as processed
