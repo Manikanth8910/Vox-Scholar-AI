@@ -1,10 +1,11 @@
 import { useState } from "react";
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Headphones, Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);

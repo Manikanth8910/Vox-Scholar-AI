@@ -1,9 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 import { useState } from "react";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { Upload, FileText, CheckCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:6279/api";
 
 export default function UploadPage() {
   const [dragging, setDragging] = useState(false);
