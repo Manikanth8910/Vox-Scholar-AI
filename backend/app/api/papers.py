@@ -164,8 +164,8 @@ async def delete_paper(
 
 async def run_processing(paper_id: int, user_id: int, db_session_factory):
     """Background task for processing paper."""
-    from app.core.database import SessionLocal
-    async with SessionLocal() as db:
+    from app.core.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
         paper = await paper_crud.get_paper(db, paper_id)
         if not paper:
             return
