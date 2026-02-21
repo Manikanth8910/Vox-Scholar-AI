@@ -19,7 +19,8 @@ from app.schemas import (
     MessageResponse,
 )
 from app.models.user import User
-from app.services import pdf_service, openai_service
+from app.services.pdf_service import pdf_service
+from app.services.openai_service import openai_service
 
 router = APIRouter(prefix="/papers", tags=["Papers"])
 

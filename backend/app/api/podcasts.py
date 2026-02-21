@@ -20,7 +20,10 @@ from app.schemas import (
 )
 from app.models.user import User
 from app.models.podcast import PodcastStatus
-from app.services import openai_service, elevenlabs_service, storage_service, edge_tts_service
+from app.services.openai_service import openai_service
+from app.services.elevenlabs_service import elevenlabs_service
+from app.services.storage_service import storage_service
+from app.services.edge_tts_service import edge_tts_service
 
 router = APIRouter(prefix="/podcasts", tags=["Podcasts"])
 
